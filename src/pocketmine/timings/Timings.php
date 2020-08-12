@@ -31,6 +31,8 @@ use pocketmine\tile\Tile;
 use function dechex;
 
 abstract class Timings{
+	/** @var bool */
+	private static $initialized = false;
 
 	/** @var TimingsHandler */
 	public static $fullTickTimer;
@@ -109,10 +111,14 @@ abstract class Timings{
 	/** @var TimingsHandler[] */
 	public static $pluginTaskTimingMap = [];
 
+	/**
+	 * @return void
+	 */
 	public static function init(){
-		if(self::$serverTickTimer instanceof TimingsHandler){
+		if(self::$initialized){
 			return;
 		}
+		self::$initialized = true;
 
 		self::$fullTickTimer = new TimingsHandler("Full Server Tick");
 		self::$serverTickTimer = new TimingsHandler("** Full Server Tick", self::$fullTickTimer);
@@ -151,14 +157,8 @@ abstract class Timings{
 
 	}
 
-	/**
-	 * @param TaskHandler $task
-	 * @param int         $period
-	 *
-	 * @return TimingsHandler
-	 */
 	public static function getScheduledTaskTimings(TaskHandler $task, int $period) : TimingsHandler{
-		$name = "Task: " . ($task->getOwnerName() ?? "Unknown") . " Runnable: " . $task->getTaskName();
+		$name = "Task: " . $task->getOwnerName() . " Runnable: " . $task->getTaskName();
 
 		if($period > 0){
 			$name .= "(interval:" . $period . ")";
@@ -173,11 +173,6 @@ abstract class Timings{
 		return self::$pluginTaskTimingMap[$name];
 	}
 
-	/**
-	 * @param Entity $entity
-	 *
-	 * @return TimingsHandler
-	 */
 	public static function getEntityTimings(Entity $entity) : TimingsHandler{
 		$entityType = (new \ReflectionClass($entity))->getShortName();
 		if(!isset(self::$entityTypeTimingMap[$entityType])){
@@ -191,11 +186,6 @@ abstract class Timings{
 		return self::$entityTypeTimingMap[$entityType];
 	}
 
-	/**
-	 * @param Tile $tile
-	 *
-	 * @return TimingsHandler
-	 */
 	public static function getTileEntityTimings(Tile $tile) : TimingsHandler{
 		$tileType = (new \ReflectionClass($tile))->getShortName();
 		if(!isset(self::$tileEntityTypeTimingMap[$tileType])){
@@ -205,11 +195,6 @@ abstract class Timings{
 		return self::$tileEntityTypeTimingMap[$tileType];
 	}
 
-	/**
-	 * @param DataPacket $pk
-	 *
-	 * @return TimingsHandler
-	 */
 	public static function getReceiveDataPacketTimings(DataPacket $pk) : TimingsHandler{
 		if(!isset(self::$packetReceiveTimingMap[$pk::NETWORK_ID])){
 			$pkName = (new \ReflectionClass($pk))->getShortName();
@@ -219,12 +204,6 @@ abstract class Timings{
 		return self::$packetReceiveTimingMap[$pk::NETWORK_ID];
 	}
 
-
-	/**
-	 * @param DataPacket $pk
-	 *
-	 * @return TimingsHandler
-	 */
 	public static function getSendDataPacketTimings(DataPacket $pk) : TimingsHandler{
 		if(!isset(self::$packetSendTimingMap[$pk::NETWORK_ID])){
 			$pkName = (new \ReflectionClass($pk))->getShortName();

@@ -35,8 +35,8 @@ use function gettype;
 use function is_numeric;
 use function is_object;
 use function is_string;
+use function mb_strtoupper;
 use function str_replace;
-use function strtoupper;
 use function trim;
 
 /**
@@ -44,9 +44,15 @@ use function trim;
  */
 class ItemFactory{
 
-	/** @var \SplFixedArray */
-	private static $list = null;
+	/**
+	 * @var \SplFixedArray|Item[]
+	 * @phpstan-var \SplFixedArray<Item>
+	 */
+	private static $list;
 
+	/**
+	 * @return void
+	 */
 	public static function init(){
 		self::$list = new \SplFixedArray(65536);
 
@@ -74,6 +80,10 @@ class ItemFactory{
 		self::registerItem(new Shovel(Item::DIAMOND_SHOVEL, 0, "Diamond Shovel", TieredTool::TIER_DIAMOND));
 		self::registerItem(new Pickaxe(Item::DIAMOND_PICKAXE, 0, "Diamond Pickaxe", TieredTool::TIER_DIAMOND));
 		self::registerItem(new Axe(Item::DIAMOND_AXE, 0, "Diamond Axe", TieredTool::TIER_DIAMOND));
+		self::registerItem(new Sword(Item::NETHERITE_SWORD, 0, "Netherite Sword", TieredTool::TIER_NETHERITE));
+		self::registerItem(new Shovel(Item::NETHERITE_SHOVEL, 0, "Netherite Shovel", TieredTool::TIER_NETHERITE));
+		self::registerItem(new Pickaxe(Item::NETHERITE_PICAXE, 0, "Netherite Picaxe", TieredTool::TIER_NETHERITE));
+		self::registerItem(new Axe(Item::NETHERITE_AXE, 0, "Netherite Axe", TieredTool::TIER_NETHERITE));
 		self::registerItem(new Stick());
 		self::registerItem(new Bowl());
 		self::registerItem(new MushroomStew());
@@ -88,6 +98,7 @@ class ItemFactory{
 		self::registerItem(new Hoe(Item::STONE_HOE, 0, "Stone Hoe", TieredTool::TIER_STONE));
 		self::registerItem(new Hoe(Item::IRON_HOE, 0, "Iron Hoe", TieredTool::TIER_IRON));
 		self::registerItem(new Hoe(Item::DIAMOND_HOE, 0, "Diamond Hoe", TieredTool::TIER_DIAMOND));
+		self::registerItem(new Hoe(Item::NETHERITE_HOE, 0, "Netherite Hoe", TieredTool::TIER_NETHERITE));
 		self::registerItem(new Hoe(Item::GOLDEN_HOE, 0, "Golden Hoe", TieredTool::TIER_GOLD));
 		self::registerItem(new WheatSeeds());
 		self::registerItem(new Item(Item::WHEAT, 0, "Wheat"));
@@ -108,6 +119,10 @@ class ItemFactory{
 		self::registerItem(new DiamondChestplate());
 		self::registerItem(new DiamondLeggings());
 		self::registerItem(new DiamondBoots());
+		self::registerItem(new NetheriteHelmet());
+		self::registerItem(new NetheriteChestplate());
+		self::registerItem(new NetheriteLeggings());
+		self::registerItem(new NetheriteBoots());
 		self::registerItem(new GoldHelmet());
 		self::registerItem(new GoldChestplate());
 		self::registerItem(new GoldLeggings());
@@ -174,6 +189,8 @@ class ItemFactory{
 		self::registerItem(new Item(Item::MAGMA_CREAM, 0, "Magma Cream"));
 		self::registerItem(new ItemBlock(Block::BREWING_STAND_BLOCK, 0, Item::BREWING_STAND));
 		self::registerItem(new ItemBlock(Block::CAULDRON_BLOCK, 0, Item::CAULDRON));
+		self::registerItem(new ShulkerBox(), true);
+		self::registerItem(new UndyedShulkerBox(), true);
 		//TODO: ENDER_EYE
 		self::registerItem(new Item(Item::GLISTERING_MELON, 0, "Glistering Melon"));
 		self::registerItem(new SpawnEgg());
@@ -275,6 +292,9 @@ class ItemFactory{
 		self::registerItem(new Record(Item::RECORD_WAIT, LevelSoundEventPacket::SOUND_RECORD_WAIT));
 
 		self::registerItem(new Shield());
+		
+		self::registerItem(new Item(Item::NETHERITE_INGOT, 0, "Netherite Ingot"));
+		self::registerItem(new Item(Item::NETHERITE_SCRAP, 0, "Netherite Scrap"));
 	}
 
 	/**
@@ -284,9 +304,7 @@ class ItemFactory{
 	 * NOTE: If you are registering a new item type, you will need to add it to the creative inventory yourself - it
 	 * will not automatically appear there.
 	 *
-	 * @param Item $item
-	 * @param bool $override
-	 *
+	 * @return void
 	 * @throws \RuntimeException if something attempted to override an already-registered item without specifying the
 	 * $override parameter.
 	 */
@@ -302,12 +320,8 @@ class ItemFactory{
 	/**
 	 * Returns an instance of the Item with the specified id, meta, count and NBT.
 	 *
-	 * @param int                     $id
-	 * @param int                     $meta
-	 * @param int                     $count
 	 * @param CompoundTag|string|null $tags
 	 *
-	 * @return Item
 	 * @throws \TypeError
 	 */
 	public static function get(int $id, int $meta = 0, int $count = 1, $tags = null) : Item{
@@ -348,9 +362,6 @@ class ItemFactory{
 	 * If multiple item instances are to be created, their identifiers must be comma-separated, for example:
 	 * `diamond_pickaxe,wooden_shovel:18,iron_ingot`
 	 *
-	 * @param string $str
-	 * @param bool   $multiple
-	 *
 	 * @return Item[]|Item
 	 *
 	 * @throws \InvalidArgumentException if the given string cannot be parsed as an item identifier
@@ -359,37 +370,38 @@ class ItemFactory{
 		if($multiple){
 			$blocks = [];
 			foreach(explode(",", $str) as $b){
-				$blocks[] = self::fromString($b, false);
+				$blocks[] = self::fromStringSingle($b);
 			}
 
 			return $blocks;
 		}else{
-			$b = explode(":", str_replace([" ", "minecraft:"], ["_", ""], trim($str)));
-			if(!isset($b[1])){
-				$meta = 0;
-			}elseif(is_numeric($b[1])){
-				$meta = (int) $b[1];
-			}else{
-				throw new \InvalidArgumentException("Unable to parse \"" . $b[1] . "\" from \"" . $str . "\" as a valid meta value");
-			}
-
-			if(is_numeric($b[0])){
-				$item = self::get((int) $b[0], $meta);
-			}elseif(defined(ItemIds::class . "::" . strtoupper($b[0]))){
-				$item = self::get(constant(ItemIds::class . "::" . strtoupper($b[0])), $meta);
-			}else{
-				throw new \InvalidArgumentException("Unable to resolve \"" . $str . "\" to a valid item");
-			}
-
-			return $item;
+			return self::fromStringSingle($str);
 		}
+	}
+
+	public static function fromStringSingle(string $str) : Item{
+		$b = explode(":", str_replace([" ", "minecraft:"], ["_", ""], trim($str)));
+		if(!isset($b[1])){
+			$meta = 0;
+		}elseif(is_numeric($b[1])){
+			$meta = (int) $b[1];
+		}else{
+			throw new \InvalidArgumentException("Unable to parse \"" . $b[1] . "\" from \"" . $str . "\" as a valid meta value");
+		}
+
+		if(is_numeric($b[0])){
+			$item = self::get((int) $b[0], $meta);
+		}elseif(defined(ItemIds::class . "::" . mb_strtoupper($b[0]))){
+			$item = self::get(constant(ItemIds::class . "::" . mb_strtoupper($b[0])), $meta);
+		}else{
+			throw new \InvalidArgumentException("Unable to resolve \"" . $str . "\" to a valid item");
+		}
+
+		return $item;
 	}
 
 	/**
 	 * Returns whether the specified item ID is already registered in the item factory.
-	 *
-	 * @param int $id
-	 * @return bool
 	 */
 	public static function isRegistered(int $id) : bool{
 		if($id < 256){

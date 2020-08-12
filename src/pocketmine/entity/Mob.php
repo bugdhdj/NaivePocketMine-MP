@@ -34,6 +34,8 @@ use pocketmine\entity\helper\EntityMoveHelper;
 use pocketmine\entity\pathfinding\navigate\PathNavigate;
 use pocketmine\entity\pathfinding\navigate\PathNavigateGround;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\Player;
 use pocketmine\timings\Timings;
 use function abs;
 use function boolval;
@@ -80,15 +82,6 @@ abstract class Mob extends Living{
 	 */
 	public function getHomePosition() : Vector3{
 		return $this->homePosition;
-	}
-
-	/**
-	 * Get number of ticks, at least during which the living entity will be silent.
-	 *
-	 * @return int
-	 */
-	public function getTalkInterval() : int{
-		return 80;
 	}
 
 	/**
@@ -219,6 +212,8 @@ abstract class Mob extends Living{
 		$this->moveWithHeading($this->moveStrafing, $this->moveForward);
 
 		$this->bodyHelper->onUpdate();
+
+		$this->tryToDespawn();
 	}
 
 	protected function createNavigator() : PathNavigate{
@@ -328,6 +323,12 @@ abstract class Mob extends Living{
 		}
 	}
 
+	protected function tryToDespawn() : void{
+		if($this->canDespawn() and $this->level->getNearestEntity($this, 128, Player::class, true) === null){
+			$this->flagForDespawn();
+		}
+	}
+
 	/**
 	 * @return bool
 	 */
@@ -399,6 +400,24 @@ abstract class Mob extends Living{
 		}
 	}
 
+	protected function onMovementUpdate() : void{
+		if($this->clientMoveTicks === 0){
+			$f = 1 - $this->drag;
+
+			$this->motion->x *= $f;
+			$this->motion->y *= $f;
+			$this->motion->z *= $f;
+		}
+
+		$this->checkMotion();
+
+		if($this->motion->x != 0 or $this->motion->y != 0 or $this->motion->z != 0){
+			$this->move($this->motion->x, $this->motion->y, $this->motion->z);
+		}
+
+		$this->tryChangeMovement();
+	}
+
 	protected function tryChangeMovement() : void{
 		if($this->isInsideOfWater()){
 			$this->motion->x *= 0.8;
@@ -413,7 +432,20 @@ abstract class Mob extends Living{
 
 			$this->motion->y -= 0.02;
 		}else{
-			parent::tryChangeMovement();
+			$friction = 0.91;
+
+			if(!$this->onGround or $this->forceMovementUpdate){
+				$this->applyGravity();
+			}
+
+			$this->motion->y *= $friction;
+
+			if($this->onGround){
+				$friction *= $this->level->getBlockAt((int) floor($this->x), (int) floor($this->y - 1), (int) floor($this->z))->getFrictionFactor();
+			}
+
+			$this->motion->x *= $friction;
+			$this->motion->z *= $friction;
 		}
 	}
 

@@ -64,13 +64,13 @@ class MainLogger extends \AttachableThreadedLogger{
 	protected $shutdown = false;
 	/** @var bool */
 	protected $logDebug;
-	/** @var MainLogger */
+	/** @var MainLogger|null */
 	public static $logger = null;
 	/** @var bool */
 	private $syncFlush = false;
 
 	/** @var string */
-	private $format = TextFormat::AQUA . "%s " . TextFormat::RESET . "%s<%s/%s> %s" . TextFormat::RESET;
+	private $format = TextFormat::DARK_AQUA . "%s " . TextFormat::RESET . "%s%s|%s > %s" . TextFormat::RESET;
 
 	/** @var bool */
 	private $mainThreadHasFormattingCodes = false;
@@ -79,9 +79,6 @@ class MainLogger extends \AttachableThreadedLogger{
 	private $timezone;
 
 	/**
-	 * @param string $logFile
-	 * @param bool   $logDebug
-	 *
 	 * @throws \RuntimeException
 	 */
 	public function __construct(string $logFile, bool $logDebug = false){
@@ -101,16 +98,12 @@ class MainLogger extends \AttachableThreadedLogger{
 		$this->start(PTHREADS_INHERIT_NONE);
 	}
 
-	/**
-	 * @return MainLogger
-	 */
 	public static function getLogger() : MainLogger{
 		return static::$logger;
 	}
 
 	/**
 	 * Returns whether a MainLogger instance is statically registered on this thread.
-	 * @return bool
 	 */
 	public static function isRegisteredStatic() : bool{
 		return static::$logger !== null;
@@ -121,6 +114,8 @@ class MainLogger extends \AttachableThreadedLogger{
 	 *
 	 * WARNING: Because static properties are thread-local, this MUST be called from the body of every Thread if you
 	 * want the logger to be accessible via {@link MainLogger#getLogger}.
+	 *
+	 * @return void
 	 */
 	public function registerStatic(){
 		if(static::$logger === null){
@@ -130,8 +125,6 @@ class MainLogger extends \AttachableThreadedLogger{
 
 	/**
 	 * Returns the current logger format used for console output.
-	 *
-	 * @return string
 	 */
 	public function getFormat() : string{
 		return $this->format;
@@ -147,69 +140,82 @@ class MainLogger extends \AttachableThreadedLogger{
 	 * - message
 	 *
 	 * @see http://php.net/manual/en/function.sprintf.php
-	 *
-	 * @param string $format
 	 */
 	public function setFormat(string $format) : void{
 		$this->format = $format;
 	}
 
 	public function emergency($message){
-		$this->send($message, \LogLevel::EMERGENCY, "Emergency", TextFormat::DARK_PURPLE);
+		$this->send($message, \LogLevel::EMERGENCY, "EMERGENCY", TextFormat::GOLD);
 	}
 
 	public function alert($message){
-		$this->send($message, \LogLevel::ALERT, "Alert", TextFormat::DARK_AQUA);
+		$this->send($message, \LogLevel::ALERT, "ALERT", TextFormat::DARK_PURPLE);
 	}
 
 	public function critical($message){
-		$this->send($message, \LogLevel::CRITICAL, "Critical", TextFormat::DARK_RED);
+		$this->send($message, \LogLevel::CRITICAL, "CRITICAL", TextFormat::DARK_RED);
 	}
 
 	public function error($message){
-		$this->send($message, \LogLevel::ERROR, "Error", TextFormat::RED);
+		$this->send($message, \LogLevel::ERROR, "ERROR", TextFormat::RED);
 	}
 
 	public function warning($message){
-		$this->send($message, \LogLevel::WARNING, "Warning", TextFormat::YELLOW);
+		$this->send($message, \LogLevel::WARNING, "WARNING", TextFormat::YELLOW);
 	}
 
 	public function notice($message){
-		$this->send($message, \LogLevel::NOTICE, "Notice", TextFormat::GOLD);
+		$this->send($message, \LogLevel::NOTICE, "NOTICE", TextFormat::LIGHT_PURPLE);
 	}
 
 	public function info($message){
-		$this->send($message, \LogLevel::INFO, "Info", TextFormat::WHITE);
+		$this->send($message, \LogLevel::INFO, "INFO", TextFormat::WHITE);
 	}
 
 	public function debug($message, bool $force = false){
 		if(!$this->logDebug and !$force){
 			return;
 		}
-		$this->send($message, \LogLevel::DEBUG, "Debug", TextFormat::DARK_PURPLE);
+		$this->send($message, \LogLevel::DEBUG, "DEBUG", TextFormat::GRAY);
 	}
 
 	/**
-	 * @param bool $logDebug
+	 * @return void
 	 */
 	public function setLogDebug(bool $logDebug){
 		$this->logDebug = $logDebug;
 	}
 
 	/**
-	 * @param \Throwable $e
-	 * @param array|null $trace
+	 * @param mixed[][]|null $trace
+	 * @phpstan-param list<array<string, mixed>>|null $trace
+	 *
+	 * @return void
 	 */
 	public function logException(\Throwable $e, $trace = null){
 		if($trace === null){
 			$trace = $e->getTrace();
 		}
-		$errstr = $e->getMessage();
-		$errfile = $e->getFile();
-		$errno = $e->getCode();
-		$errline = $e->getLine();
 
-		$errorConversion = [
+		$this->synchronized(function() use ($e, $trace) : void{
+			$this->critical(self::printExceptionMessage($e));
+			foreach(Utils::printableTrace($trace) as $line){
+				$this->critical($line);
+			}
+			for($prev = $e->getPrevious(); $prev !== null; $prev = $prev->getPrevious()){
+				$this->critical("Previous: " . self::printExceptionMessage($prev));
+				foreach(Utils::printableTrace($prev->getTrace()) as $line){
+					$this->critical("  " . $line);
+				}
+			}
+		});
+
+		$this->syncFlushBuffer();
+	}
+
+	private static function printExceptionMessage(\Throwable $e) : string{
+		static $errorConversion = [
 			0 => "EXCEPTION",
 			E_ERROR => "E_ERROR",
 			E_WARNING => "E_WARNING",
@@ -227,26 +233,16 @@ class MainLogger extends \AttachableThreadedLogger{
 			E_DEPRECATED => "E_DEPRECATED",
 			E_USER_DEPRECATED => "E_USER_DEPRECATED"
 		];
-		if($errno === 0){
-			$type = LogLevel::CRITICAL;
-		}else{
-			$type = ($errno === E_ERROR or $errno === E_USER_ERROR) ? LogLevel::ERROR : (($errno === E_USER_WARNING or $errno === E_WARNING) ? LogLevel::WARNING : LogLevel::NOTICE);
-		}
+
+		$errstr = preg_replace('/\s+/', ' ', trim($e->getMessage()));
+
+		$errno = $e->getCode();
 		$errno = $errorConversion[$errno] ?? $errno;
-		$errstr = preg_replace('/\s+/', ' ', trim($errstr));
-		$errfile = Utils::cleanPath($errfile);
 
-		$message = get_class($e) . ": \"$errstr\" ($errno) in \"$errfile\" at line $errline";
-		$stack = Utils::printableTrace($trace);
+		$errfile = Utils::cleanPath($e->getFile());
+		$errline = $e->getLine();
 
-		$this->synchronized(function() use ($type, $message, $stack) : void{
-			$this->log($type, $message);
-			foreach($stack as $line){
-				$this->debug($line, true);
-			}
-		});
-
-		$this->syncFlushBuffer();
+		return get_class($e) . ": \"$errstr\" ($errno) in \"$errfile\" at line $errline";
 	}
 
 	public function log($level, $message){
@@ -278,11 +274,22 @@ class MainLogger extends \AttachableThreadedLogger{
 		}
 	}
 
+	/**
+	 * @return void
+	 */
 	public function shutdown(){
 		$this->shutdown = true;
 		$this->notify();
 	}
 
+	/**
+	 * @param string $message
+	 * @param string $level
+	 * @param string $prefix
+	 * @param string $color
+	 *
+	 * @return void
+	 */
 	protected function send($message, $level, $prefix, $color){
 		/** @var \DateTime|null $time */
 		static $time = null;
@@ -293,11 +300,11 @@ class MainLogger extends \AttachableThreadedLogger{
 
 		$thread = \Thread::getCurrentThread();
 		if($thread === null){
-			$threadName = "Server thread";
+			$threadName = "Server";
 		}elseif($thread instanceof Thread or $thread instanceof Worker){
-			$threadName = $thread->getThreadName() . " thread";
+			$threadName = $thread->getThreadName();
 		}else{
-			$threadName = (new \ReflectionClass($thread))->getShortName() . " thread";
+			$threadName = (new \ReflectionClass($thread))->getShortName();
 		}
 
 		$message = sprintf($this->format, $time->format("H:i:s"), $color, $threadName, $prefix, TextFormat::clean($message, false));
@@ -307,7 +314,7 @@ class MainLogger extends \AttachableThreadedLogger{
 		}
 
 		$this->synchronized(function() use ($message, $level, $time) : void{
-			echo Terminal::toANSI($message) . PHP_EOL;
+			Terminal::writeLine($message);
 
 			foreach($this->attachments as $attachment){
 				$attachment->call($level, $message);
@@ -317,9 +324,12 @@ class MainLogger extends \AttachableThreadedLogger{
 		});
 	}
 
+	/**
+	 * @return void
+	 */
 	public function syncFlushBuffer(){
 		$this->syncFlush = true;
-		$this->synchronized(function(){
+		$this->synchronized(function() : void{
 			$this->notify(); //write immediately
 
 			while($this->syncFlush){
@@ -331,7 +341,7 @@ class MainLogger extends \AttachableThreadedLogger{
 	/**
 	 * @param resource $logResource
 	 */
-	private function writeLogStream($logResource){
+	private function writeLogStream($logResource) : void{
 		while($this->logStream->count() > 0){
 			$chunk = $this->logStream->shift();
 			fwrite($logResource, $chunk);
@@ -343,6 +353,9 @@ class MainLogger extends \AttachableThreadedLogger{
 		}
 	}
 
+	/**
+	 * @return void
+	 */
 	public function run(){
 		$logResource = fopen($this->logFile, "ab");
 		if(!is_resource($logResource)){
@@ -351,7 +364,7 @@ class MainLogger extends \AttachableThreadedLogger{
 
 		while(!$this->shutdown){
 			$this->writeLogStream($logResource);
-			$this->synchronized(function(){
+			$this->synchronized(function() : void{
 				$this->wait(25000);
 			});
 		}

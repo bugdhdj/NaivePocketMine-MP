@@ -21,11 +21,10 @@
 
 declare(strict_types=1);
 
-
 namespace pocketmine\resourcepacks;
 
-
 use Ahc\Json\Comment as CommentedJsonDecoder;
+use function assert;
 use function count;
 use function fclose;
 use function feof;
@@ -34,28 +33,21 @@ use function filesize;
 use function fopen;
 use function fread;
 use function fseek;
+use function gettype;
 use function hash_file;
 use function implode;
+use function preg_match;
+use function strlen;
 
 class ZippedResourcePack implements ResourcePack{
 
 	/**
 	 * Performs basic validation checks on a resource pack's manifest.json.
 	 * TODO: add more manifest validation
-	 *
-	 * @param \stdClass $manifest
-	 *
-	 * @return bool
 	 */
 	public static function verifyManifest(\stdClass $manifest) : bool{
 		if(!isset($manifest->format_version) or !isset($manifest->header) or !isset($manifest->modules)){
 			return false;
-		}
-
-		foreach($manifest->modules as $module){
-			if(!isset($module->type)){ // check modules
-				return false;
-			}
 		}
 
 		//Right now we don't care about anything else, only the stuff we're sending to clients.
@@ -73,13 +65,11 @@ class ZippedResourcePack implements ResourcePack{
 	/** @var \stdClass */
 	protected $manifest;
 
-	/** @var string */
+	/** @var string|null */
 	protected $sha256 = null;
 
 	/** @var resource */
 	protected $fileResource;
-
-	protected $packType = self::PACK_TYPE_RESOURCE;
 
 	/**
 	 * @param string $zipPath Path to the resource pack zip
@@ -98,7 +88,22 @@ class ZippedResourcePack implements ResourcePack{
 		}
 
 		if(($manifestData = $archive->getFromName("manifest.json")) === false){
-			if($archive->locateName("pack_manifest.json") !== false){
+			$manifestPath = null;
+			$manifestIdx = null;
+			for($i = 0; $i < $archive->numFiles; ++$i){
+				$name = $archive->getNameIndex($i);
+				if(
+					($manifestPath === null or strlen($name) < strlen($manifestPath)) and
+					preg_match('#.*/manifest.json$#', $name) === 1
+				){
+					$manifestPath = $name;
+					$manifestIdx = $i;
+				}
+			}
+			if($manifestIdx !== null){
+				$manifestData = $archive->getFromIndex($manifestIdx);
+				assert($manifestData !== false);
+			}elseif($archive->locateName("pack_manifest.json") !== false){
 				throw new ResourcePackException("Unsupported old pack format");
 			}else{
 				throw new ResourcePackException("manifest.json not found in the archive root");
@@ -121,15 +126,6 @@ class ZippedResourcePack implements ResourcePack{
 		}
 
 		$this->manifest = $manifest;
-
-		$type = $manifest->modules[0]->type;
-		if($type === self::PACK_TYPE_RESOURCE){
-			$this->packType = self::PACK_TYPE_RESOURCE;
-		}elseif($type === self::PACK_TYPE_BEHAVIOR){
-			$this->packType = self::PACK_TYPE_BEHAVIOR;
-		}else{
-			throw new ResourcePackException("Pack type is unsupported in manifest.json");
-		}
 
 		$this->fileResource = fopen($zipPath, "rb");
 	}
@@ -171,9 +167,5 @@ class ZippedResourcePack implements ResourcePack{
 			throw new \InvalidArgumentException("Requested a resource pack chunk with invalid start offset");
 		}
 		return fread($this->fileResource, $length);
-	}
-
-	public function getPackType() : string{
-		return $this->packType;
 	}
 }

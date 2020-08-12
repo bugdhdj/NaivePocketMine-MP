@@ -24,12 +24,13 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\item\Item;
+use pocketmine\network\mcpe\protocol\types\inventory\UIInventorySlotOffset;
 use pocketmine\Player;
 use function max;
 use function min;
 use const PHP_INT_MAX;
 
-class CraftingGrid extends BaseInventory{
+class CraftingGrid extends BaseInventory implements FakeInventory{
 	public const SIZE_SMALL = 2;
 	public const SIZE_BIG = 3;
 
@@ -50,6 +51,7 @@ class CraftingGrid extends BaseInventory{
 	public function __construct(Player $holder, int $gridWidth){
 		$this->holder = $holder;
 		$this->gridWidth = $gridWidth;
+
 		parent::__construct();
 	}
 
@@ -59,6 +61,10 @@ class CraftingGrid extends BaseInventory{
 
 	public function getDefaultSize() : int{
 		return $this->getGridWidth() ** 2;
+	}
+
+	public function getUIOffsets() : array{
+		return $this->gridWidth === self::SIZE_SMALL ? UIInventorySlotOffset::CRAFTING2X2_INPUT : UIInventorySlotOffset::CRAFTING3X3_INPUT;
 	}
 
 	public function setSize(int $size){
@@ -129,11 +135,6 @@ class CraftingGrid extends BaseInventory{
 
 	/**
 	 * Returns the item at offset x,y, offset by where the starts of the recipe rectangle are.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 *
-	 * @return Item
 	 */
 	public function getIngredient(int $x, int $y) : Item{
 		if($this->startX !== null and $this->startY !== null){
@@ -145,8 +146,6 @@ class CraftingGrid extends BaseInventory{
 
 	/**
 	 * Returns the width of the recipe we're trying to craft, based on items currently in the grid.
-	 *
-	 * @return int
 	 */
 	public function getRecipeWidth() : int{
 		return $this->xLen ?? 0;
@@ -154,7 +153,6 @@ class CraftingGrid extends BaseInventory{
 
 	/**
 	 * Returns the height of the recipe we're trying to craft, based on items currently in the grid.
-	 * @return int
 	 */
 	public function getRecipeHeight() : int{
 		return $this->yLen ?? 0;

@@ -29,6 +29,7 @@ use pocketmine\entity\Creature;
 use pocketmine\entity\CreatureType;
 use pocketmine\entity\hostile\Creeper;
 use pocketmine\entity\hostile\Skeleton;
+use pocketmine\entity\hostile\Slime;
 use pocketmine\entity\hostile\Spider;
 use pocketmine\entity\hostile\Zombie;
 use pocketmine\entity\Monster;
@@ -59,16 +60,16 @@ abstract class Biome{
 
 	public const ICE_PLAINS = 12;
 
-
 	public const SMALL_MOUNTAINS = 20;
-
 
 	public const BIRCH_FOREST = 27;
 
-
 	public const MAX_BIOMES = 256;
 
-	/** @var Biome[]|\SplFixedArray */
+	/**
+	 * @var Biome[]|\SplFixedArray
+	 * @phpstan-var \SplFixedArray<Biome>
+	 */
 	private static $biomes;
 
 	/** @var int */
@@ -112,18 +113,24 @@ abstract class Biome{
 		$this->spawnableMonsterList[] = new SpawnListEntry(Zombie::class, 100, 4, 4);
 		$this->spawnableMonsterList[] = new SpawnListEntry(Skeleton::class, 100, 4, 4);
 		$this->spawnableMonsterList[] = new SpawnListEntry(Creeper::class, 100, 4, 4);
-		//$this->spawnableMonsterList[] = new SpawnListEntry(Slime::class, 100, 4, 4);
+		$this->spawnableMonsterList[] = new SpawnListEntry(Slime::class, 100, 4, 4);
 		//$this->spawnableMonsterList[] = new SpawnListEntry(Enderman::class, 10, 1, 4);
 		//$this->spawnableMonsterList[] = new SpawnListEntry(Witch::class, 5, 1, 1);
 		$this->spawnableWaterCreatureList[] = new SpawnListEntry(Squid::class, 10, 4, 4);
 		//$this->spawnableCaveCreatureList[] = new SpawnListEntry(Bat::class, 10, 8, 8);
 	}
 
+	/**
+	 * @return void
+	 */
 	protected static function register(int $id, Biome $biome){
 		self::$biomes[$id] = $biome;
 		$biome->setId($id);
 	}
 
+	/**
+	 * @return void
+	 */
 	public static function init(){
 		self::$biomes = new \SplFixedArray(self::MAX_BIOMES);
 
@@ -139,17 +146,11 @@ abstract class Biome{
 		self::register(self::ICE_PLAINS, new IcePlainsBiome());
 		self::register(self::HELL, new HellBiome());
 		self::register(self::END, new EndBiome());
-
 		self::register(self::SMALL_MOUNTAINS, new SmallMountainsBiome());
 
 		self::register(self::BIRCH_FOREST, new ForestBiome(ForestBiome::TYPE_BIRCH));
 	}
 
-	/**
-	 * @param int $id
-	 *
-	 * @return Biome
-	 */
 	public static function getBiome(int $id) : Biome{
 		if(self::$biomes[$id] === null){
 			self::register($id, new UnknownBiome());
@@ -157,19 +158,22 @@ abstract class Biome{
 		return self::$biomes[$id];
 	}
 
+	/**
+	 * @return void
+	 */
 	public function clearPopulators(){
 		$this->populators = [];
 	}
 
+	/**
+	 * @return void
+	 */
 	public function addPopulator(Populator $populator){
 		$this->populators[] = $populator;
 	}
 
 	/**
-	 * @param ChunkManager $level
-	 * @param int          $chunkX
-	 * @param int          $chunkZ
-	 * @param Random       $random
+	 * @return void
 	 */
 	public function populateChunk(ChunkManager $level, int $chunkX, int $chunkZ, Random $random){
 		foreach($this->populators as $populator){
@@ -184,6 +188,9 @@ abstract class Biome{
 		return $this->populators;
 	}
 
+	/**
+	 * @return void
+	 */
 	public function setId(int $id){
 		if(!$this->registered){
 			$this->registered = true;
@@ -205,6 +212,9 @@ abstract class Biome{
 		return $this->maxElevation;
 	}
 
+	/**
+	 * @return void
+	 */
 	public function setElevation(int $min, int $max){
 		$this->minElevation = $min;
 		$this->maxElevation = $max;
@@ -219,6 +229,8 @@ abstract class Biome{
 
 	/**
 	 * @param Block[] $covers
+	 *
+	 * @return void
 	 */
 	public function setGroundCover(array $covers){
 		$this->groundCover = $covers;
@@ -240,13 +252,13 @@ abstract class Biome{
 	public function getSpawnableList(CreatureType $creatureType) : array{
 		$entityClass = $creatureType->getCreatureClass();
 		switch($entityClass){
-			case ($entityClass === WaterAnimal::class):
+			case WaterAnimal::class:
 				return $this->spawnableWaterCreatureList;
-			case ($entityClass === Creature::class):
+			case Creature::class:
 				return $this->spawnableCaveCreatureList;
-			case ($entityClass === Animal::class):
+			case Animal::class:
 				return $this->spawnableCreatureList;
-			case ($entityClass === Monster::class):
+			case Monster::class:
 				return $this->spawnableMonsterList;
 		}
 

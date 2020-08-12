@@ -26,6 +26,7 @@ namespace pocketmine\tile;
 
 use pocketmine\entity\Entity;
 use pocketmine\entity\object\ItemEntity;
+use pocketmine\inventory\FurnaceInventory;
 use pocketmine\inventory\HopperInventory;
 use pocketmine\inventory\InventoryHolder;
 use pocketmine\level\Level;
@@ -96,6 +97,10 @@ class Hopper extends Spawnable implements Container, Nameable, InventoryHolder{
 	}
 
 	public function onUpdate() : bool{
+		if($this->closed){
+			return false;
+		}
+
 		if($this->isOnTransferCooldown()){
 			$this->transferCooldown--;
 		}else{
@@ -105,8 +110,8 @@ class Hopper extends Spawnable implements Container, Nameable, InventoryHolder{
 				$transfer = $this->transferItemOut();
 			}
 
-			if(!$this->isFull()){
-				$transfer = $this->pullItemFromTop() or $transfer;
+			if(!$transfer and !$this->isFull()){
+				$transfer = $this->pullItemFromTop();
 			}
 
 			if($transfer){
@@ -122,7 +127,12 @@ class Hopper extends Spawnable implements Container, Nameable, InventoryHolder{
 	}
 
 	public function isFull() : bool{
-		return count($this->inventory->getContents()) === $this->inventory->getSize();
+		foreach($this->inventory->getContents(true) as $slot => $item){
+			if($item->getMaxStackSize() !== $item->getCount()){
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public function transferItemOut() : bool{
@@ -156,6 +166,11 @@ class Hopper extends Spawnable implements Container, Nameable, InventoryHolder{
 		if($tile instanceof InventoryHolder){
 			$inv = $tile->getInventory();
 			foreach($inv->getContents() as $slot => $item){
+				if($inv instanceof FurnaceInventory){
+					//So only results of Furnaces go trough
+					if($slot !== 2) continue;
+				}
+
 				$item->setCount(1);
 
 				if($this->inventory->canAddItem($item)){

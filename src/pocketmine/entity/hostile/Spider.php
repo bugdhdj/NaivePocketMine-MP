@@ -26,11 +26,11 @@ namespace pocketmine\entity\hostile;
 
 use pocketmine\entity\Ageable;
 use pocketmine\entity\Arthropod;
-use pocketmine\entity\behavior\FindAttackableTargetBehavior;
 use pocketmine\entity\behavior\FloatBehavior;
 use pocketmine\entity\behavior\LeapAtTargetBehavior;
 use pocketmine\entity\behavior\LookAtPlayerBehavior;
 use pocketmine\entity\behavior\MeleeAttackBehavior;
+use pocketmine\entity\behavior\NearestAttackableTargetBehavior;
 use pocketmine\entity\behavior\RandomLookAroundBehavior;
 use pocketmine\entity\behavior\RandomStrollBehavior;
 use pocketmine\entity\Monster;
@@ -76,16 +76,28 @@ class Spider extends Monster implements Ageable, Arthropod{
 		$this->behaviorPool->setBehavior(4, new LookAtPlayerBehavior($this, 8.0));
 		$this->behaviorPool->setBehavior(5, new RandomLookAroundBehavior($this));
 
-		$this->targetBehaviorPool->setBehavior(0, new FindAttackableTargetBehavior($this, Player::class));
+		$this->targetBehaviorPool->setBehavior(0, new class($this, Player::class) extends NearestAttackableTargetBehavior{
+			public function canStart() : bool{
+				$canStart = parent::canStart();
+
+				if($this->mob instanceof Spider and $canStart){
+					if($this->mob->level->isDayTime() and !$this->mob->canSpawnHere()){
+						return false;
+					}
+				}
+
+				return $canStart;
+			}
+		});
 	}
 
 	public function getXpDropAmount() : int{
-		return $this->getLastAttacker() instanceof Player ? 5 : 0;
+		return $this->getRevengeTarget() instanceof Player ? 5 : 0;
 	}
 
 	public function getDrops() : array{
 		$drops = [ItemFactory::get(Item::STRING, 0, rand(0, 2))];
-		if($this->getLastAttacker() instanceof Player and $this->level->random->nextBoundedInt(3) === 0){
+		if($this->getRevengeTarget() instanceof Player and $this->level->random->nextBoundedInt(3) === 0){
 			$drops[] = ItemFactory::get(Item::SPIDER_EYE);
 		}
 		return $drops;

@@ -61,6 +61,10 @@ class ItemTest extends TestCase{
 		}
 	}
 
+	/**
+	 * @return mixed[][]
+	 * @phpstan-return list<array{string,int,int}>
+	 */
 	public function itemFromStringProvider() : array{
 		return [
 			["dye:4", ItemIds::DYE, 4],
@@ -80,7 +84,7 @@ class ItemTest extends TestCase{
 	 * @param int    $meta
 	 */
 	public function testFromStringSingle(string $string, int $id, int $meta) : void{
-		$item = ItemFactory::fromString($string);
+		$item = ItemFactory::fromStringSingle($string);
 
 		self::assertEquals($id, $item->getId());
 		self::assertEquals($meta, $item->getDamage());

@@ -36,11 +36,13 @@ use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\item\ItemIds;
 use pocketmine\level\Position;
+use pocketmine\nbt\tag\ListTag;
 use pocketmine\network\mcpe\protocol\LevelEventPacket;
+use pocketmine\network\mcpe\protocol\types\inventory\UIInventorySlotOffset;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\Player;
 
-class AnvilInventory extends ContainerInventory implements FakeInventory{
+class AnvilInventory extends ContainerInventory implements FakeInventory, FakeResultInventory{
 
 	public const SLOT_INPUT = 0;
 	public const SLOT_SACRIFICE = 1;
@@ -61,12 +63,16 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 		return "Anvil";
 	}
 
+	public function getUIOffsets() : array{
+		return UIInventorySlotOffset::ANVIL;
+	}
+
 	public function getDefaultSize() : int{
 		return 3; //1 input, 1 sacrifice, 1 output
 	}
 
-	public function isOutputFull() : bool{
-		return !$this->getItem(self::SLOT_OUTPUT)->isNull();
+	public function getResultSlot() : int{
+		return self::SLOT_OUTPUT;
 	}
 
 	/**
@@ -96,8 +102,6 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 		if(!$output->isNull()){
 			if($result->hasCustomName()){
 				if($output->getCustomName() !== $result->getCustomName()){ // renaming
-					$output->setCustomName($result->getCustomName());
-
 					$renamed = true;
 					$levelCostBonus++;
 				}
@@ -109,12 +113,12 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 				if($output instanceof TieredTool and isset($tierIds[$output->getTier()])){
 					$targetMaterial = ItemFactory::get($tierIds[$output->getTier()]);
 					if($sacrifice->equals($targetMaterial)){
-						$d = min($input->getDamage(), $output->getMaxDurability() / 4);
+						$d = min($input->getDamage(), (int) $output->getMaxDurability() / 4);
 
 						for($m2 = 0; $d > 0 and $m2 < $sacrifice->getCount(); $m2++){
 							$output->setDamage($output->getDamage() - $d);
 							$levelCostBonus++;
-							$d = min($output->getDamage(), $output->getMaxDurability() / 4);
+							$d = min($output->getDamage(), (int) $output->getMaxDurability() / 4);
 						}
 
 						$materialCost = $m2;
@@ -205,7 +209,7 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 				return false;
 			}
 
-			if(!$onlyRenamed and ($player->isSurvival() and $input->getRepairCost() >= 63) or $input->getRepairCost() >= 2147483647){
+			if((!$onlyRenamed and ($player->isSurvival() and $input->getRepairCost() >= 63)) or $input->getRepairCost() >= 2147483647){
 				$this->clear(self::SLOT_OUTPUT);
 
 				return false;
@@ -225,16 +229,16 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 
 			$this->checkEnchantments($result, $output);
 
-			if($output->equalsExact($result)){
-				$this->clear(self::SLOT_INPUT);
+			if($renamed){
+				$output->setCustomName($result->getCustomName());
+			}
 
+			if($output->equalsExact($result)){
 				if(!$sacrifice->isNull()){
 					$sacrifice->setCount(max(0, $sacrifice->getCount() - $materialCost));
 
 					$this->setItem(self::SLOT_SACRIFICE, $sacrifice);
 				}
-
-				$this->setItem(self::SLOT_OUTPUT, $output, false);
 
 				if(!$player->isCreative()){
 					$player->addXpLevels(max(-$player->getXpLevel(), -$levelCost));
@@ -255,15 +259,15 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 
 					if($type !== -1){
 						$player->level->setBlock($this->getHolder(), new Anvil($direction | $type));
-
-						$player->level->broadcastLevelEvent($this->getHolder(), LevelEventPacket::EVENT_SOUND_ANVIL_USE);
 					}else{
 						$player->level->setBlock($this->getHolder(), new Air());
 
 						$player->level->broadcastLevelEvent($this->getHolder(), LevelEventPacket::EVENT_SOUND_ANVIL_BREAK);
+						return true;
 					}
-
 				}
+
+				$player->level->broadcastLevelEvent($this->getHolder(), LevelEventPacket::EVENT_SOUND_ANVIL_USE);
 				return true;
 			}
 		}
@@ -295,8 +299,8 @@ class AnvilInventory extends ContainerInventory implements FakeInventory{
 			}
 		}
 
-		if($same){
-			$output->setNamedTagEntry($result->getNamedTagEntry(Item::TAG_ENCH));
+		if($same and !empty($map1) and !empty($map2)){
+			$output->setNamedTagEntry($result->getNamedTagEntry(Item::TAG_ENCH) ?? new ListTag(Item::TAG_ENCH, []));
 		}
 	}
 

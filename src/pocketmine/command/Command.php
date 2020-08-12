@@ -56,12 +56,10 @@ abstract class Command{
 	/** @var string[] */
 	private $aliases = [];
 
-	/**
-	 * @var string[]
-	 */
+	/** @var string[] */
 	private $activeAliases = [];
 
-	/** @var CommandMap */
+	/** @var CommandMap|null */
 	private $commandMap = null;
 
 	/** @var string */
@@ -73,16 +71,13 @@ abstract class Command{
 	/** @var string|null */
 	private $permission = null;
 
-	/** @var string */
+	/** @var string|null */
 	private $permissionMessage = null;
 
-	/** @var TimingsHandler */
-	public $timings;
+	/** @var TimingsHandler|null */
+	public $timings = null;
 
 	/**
-	 * @param string   $name
-	 * @param string   $description
-	 * @param string   $usageMessage
 	 * @param string[] $aliases
 	 * @param CommandParameter[] $overloads
 	 */
@@ -106,9 +101,7 @@ abstract class Command{
 	}
 
 	/**
-	 * @param CommandSender $sender
-	 * @param string        $commandLabel
-	 * @param string[]      $args
+	 * @param string[] $args
 	 *
 	 * @return mixed
 	 * @throws CommandException
@@ -142,17 +135,12 @@ abstract class Command{
 	}
 
 	/**
-	 * @param string|null $permission
+	 * @return void
 	 */
 	public function setPermission(string $permission = null){
 		$this->permission = $permission;
 	}
 
-	/**
-	 * @param CommandSender $target
-	 *
-	 * @return bool
-	 */
 	public function testPermission(CommandSender $target) : bool{
 		if($this->testPermissionSilent($target)){
 			return true;
@@ -167,11 +155,6 @@ abstract class Command{
 		return false;
 	}
 
-	/**
-	 * @param CommandSender $target
-	 *
-	 * @return bool
-	 */
 	public function testPermissionSilent(CommandSender $target) : bool{
 		if($this->permission === null or $this->permission === ""){
 			return true;
@@ -186,9 +169,6 @@ abstract class Command{
 		return false;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getLabel() : string{
 		return $this->label;
 	}
@@ -210,10 +190,6 @@ abstract class Command{
 
 	/**
 	 * Registers the command into a Command map
-	 *
-	 * @param CommandMap $commandMap
-	 *
-	 * @return bool
 	 */
 	public function register(CommandMap $commandMap) : bool{
 		if($this->allowChangesFrom($commandMap)){
@@ -225,11 +201,6 @@ abstract class Command{
 		return false;
 	}
 
-	/**
-	 * @param CommandMap $commandMap
-	 *
-	 * @return bool
-	 */
 	public function unregister(CommandMap $commandMap) : bool{
 		if($this->allowChangesFrom($commandMap)){
 			$this->commandMap = null;
@@ -242,18 +213,10 @@ abstract class Command{
 		return false;
 	}
 
-	/**
-	 * @param CommandMap $commandMap
-	 *
-	 * @return bool
-	 */
 	private function allowChangesFrom(CommandMap $commandMap) : bool{
 		return $this->commandMap === null or $this->commandMap === $commandMap;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isRegistered() : bool{
 		return $this->commandMap !== null;
 	}
@@ -275,9 +238,6 @@ abstract class Command{
 		}
 	}
 
-	/**
-	 * @return string|null
-	 */
 	public function getPermissionMessage() : ?string{
 		return $this->permissionMessage;
 	}
@@ -307,24 +267,21 @@ abstract class Command{
 		$this->commandData->commandDescription = $description;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getUsage() : string{
 		return $this->usageMessage;
 	}
 
 	/**
-	 * @param string $usage
+	 * @return void
 	 */
 	public function setUsage(string $usage){
 		$this->usageMessage = $usage;
 	}
 
 	/**
-	 * @param CommandSender        $source
 	 * @param TextContainer|string $message
-	 * @param bool                 $sendToSource
+	 *
+	 * @return void
 	 */
 	public static function broadcastCommandMessage(CommandSender $source, $message, bool $sendToSource = true){
 		if($message instanceof TextContainer){

@@ -38,7 +38,7 @@ use pocketmine\level\particle\HugeExplodeSeedParticle;
 use pocketmine\level\utils\SubChunkIteratorManager;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
-use pocketmine\network\mcpe\protocol\ExplodePacket;
+use pocketmine\network\mcpe\protocol\LevelEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\tile\Chest;
 use pocketmine\tile\Container;
@@ -61,23 +61,21 @@ class Explosion{
 	public $affectedBlocks = [];
 	/** @var float */
 	public $stepLen = 0.3;
-	/** @var Entity|Block */
+	/** @var Entity|Block|null */
 	private $what;
 
 	/** @var SubChunkIteratorManager */
 	private $subChunkHandler;
 
 	/**
-	 * @param Position     $center
-	 * @param float        $size
-	 * @param Entity|Block $what
+	 * @param Entity|Block|null $what
 	 */
 	public function __construct(Position $center, float $size, $what = null){
 		if(!$center->isValid()){
 			throw new \InvalidArgumentException("Position does not have a valid world");
 		}
 		$this->source = $center;
-		$this->level = $center->getLevel();
+		$this->level = $center->getLevelNonNull();
 
 		if($size <= 0){
 			throw new \InvalidArgumentException("Explosion radius must be greater than 0, got $size");
@@ -89,10 +87,8 @@ class Explosion{
 	}
 
 	/**
-	 * Calculates which blocks will be destroyed by this explosion. If explodeB() is called without calling this, no blocks 
+	 * Calculates which blocks will be destroyed by this explosion. If explodeB() is called without calling this, no blocks
 	 * will be destroyed.
-	 *
-	 * @return bool
 	 */
 	public function explodeA() : bool{
 		if($this->size < 0.1){
@@ -105,7 +101,7 @@ class Explosion{
 		$currentChunk = null;
 		$currentSubChunk = null;
 
-		$mRays = (int) ($this->rays - 1);
+		$mRays = $this->rays - 1;
 		for($i = 0; $i < $this->rays; ++$i){
 			for($j = 0; $j < $this->rays; ++$j){
 				for($k = 0; $k < $this->rays; ++$k){
@@ -124,6 +120,10 @@ class Explosion{
 							$vBlock->y = $pointerY >= $y ? $y : $y - 1;
 							$vBlock->z = $pointerZ >= $z ? $z : $z - 1;
 
+							$pointerX += $vector->x;
+							$pointerY += $vector->y;
+							$pointerZ += $vector->z;
+
 							if(!$this->subChunkHandler->moveTo($vBlock->x, $vBlock->y, $vBlock->z)){
 								continue;
 							}
@@ -133,15 +133,14 @@ class Explosion{
 							if($blockId !== 0){
 								$blastForce -= (BlockFactory::$blastResistance[$blockId] / 5 + 0.3) * $this->stepLen;
 								if($blastForce > 0){
-									if(!isset($this->affectedBlocks[$index = Level::blockHash($vBlock->x, $vBlock->y, $vBlock->z)])){
-										$this->affectedBlocks[$index] = BlockFactory::get($blockId, $this->subChunkHandler->currentSubChunk->getBlockData($vBlock->x & 0x0f, $vBlock->y & 0x0f, $vBlock->z & 0x0f), $vBlock);
+									if(!isset($this->affectedBlocks[Level::blockHash($vBlock->x, $vBlock->y, $vBlock->z)])){
+										$_block = BlockFactory::get($blockId, $this->subChunkHandler->currentSubChunk->getBlockData($vBlock->x & 0x0f, $vBlock->y & 0x0f, $vBlock->z & 0x0f), $vBlock);
+										foreach($_block->getAffectedBlocks() as $_affectedBlock){
+											$this->affectedBlocks[Level::blockHash($_affectedBlock->x, $_affectedBlock->y, $_affectedBlock->z)] = $_affectedBlock;
+										}
 									}
 								}
 							}
-
-							$pointerX += $vector->x;
-							$pointerY += $vector->y;
-							$pointerZ += $vector->z;
 						}
 					}
 				}
@@ -154,8 +153,6 @@ class Explosion{
 	/**
 	 * Executes the explosion's effects on the world. This includes destroying blocks (if any), harming and knocking back entities,
 	 * and creating sounds and particles.
-	 *
-	 * @return bool
 	 */
 	public function explodeB() : bool{
 		$send = [];
@@ -191,8 +188,8 @@ class Explosion{
 
 			if($distance <= 1){
 				$motion = $entity->subtract($this->source)->normalize();
-
-				$impact = (1 - $distance) * ($exposure = 1);
+				$density = $entity->level->getBlockDensity($this->source, $entity->getBoundingBox());
+				$impact = (1 - $distance) * $density;
 
 				$damage = (int) ((($impact * $impact + $impact) / 2) * 8 * $explosionSize + 1);
 
@@ -208,7 +205,6 @@ class Explosion{
 				$entity->setMotion($motion->multiply($impact));
 			}
 		}
-
 
 		$air = ItemFactory::get(Item::AIR);
 
@@ -260,13 +256,7 @@ class Explosion{
 			$send[] = new Vector3($block->x - $source->x, $block->y - $source->y, $block->z - $source->z);
 		}
 
-		$pk = new ExplodePacket();
-		$pk->position = $this->source->asVector3();
-		$pk->radius = $this->size;
-		$pk->records = $send;
-		$this->level->broadcastPacketToViewers($source, $pk);
-
-		$this->level->addParticle(new HugeExplodeSeedParticle($source));
+		$this->level->broadcastLevelEvent($source, LevelEventPacket::EVENT_PARTICLE_EXPLOSION, (int) ceil($this->size));
 		$this->level->broadcastLevelSoundEvent($source, LevelSoundEventPacket::SOUND_EXPLODE);
 
 		return true;

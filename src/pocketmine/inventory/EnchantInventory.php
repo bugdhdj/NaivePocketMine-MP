@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\level\Position;
+use pocketmine\network\mcpe\protocol\types\inventory\UIInventorySlotOffset;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\Player;
 
@@ -46,6 +47,10 @@ class EnchantInventory extends ContainerInventory implements FakeInventory{
 
 	public function getDefaultSize() : int{
 		return 2; //1 input, 1 lapis
+	}
+
+	public function getUIOffsets() : array{
+		return UIInventorySlotOffset::ENCHANTING_TABLE;
 	}
 
 	/**

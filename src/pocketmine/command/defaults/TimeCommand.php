@@ -100,14 +100,13 @@ class TimeCommand extends VanillaCommand{
 				return true;
 			}
 			if($sender instanceof Player){
-				$level = $sender->getLevel();
+				$level = $sender->getLevelNonNull();
 			}else{
 				$level = $sender->getServer()->getDefaultLevel();
 			}
 			$sender->sendMessage($sender->getServer()->getLanguage()->translateString("commands.time.query", [$level->getTime()]));
 			return true;
 		}
-
 
 		if(count($args) < 2){
 			throw new InvalidCommandSyntaxException();
@@ -120,8 +119,29 @@ class TimeCommand extends VanillaCommand{
 				return true;
 			}
 
-			$const = Level::class . "::TIME_" . strtoupper($args[1]);
-			$value = defined($const) ? constant($const) : $this->getInteger($sender, $args[1], 0);
+			switch($args[1]){
+				case "day":
+					$value = Level::TIME_DAY;
+					break;
+				case "noon":
+					$value = Level::TIME_NOON;
+					break;
+				case "sunset":
+					$value = Level::TIME_SUNSET;
+					break;
+				case "night":
+					$value = Level::TIME_NIGHT;
+					break;
+				case "midnight":
+					$value = Level::TIME_MIDNIGHT;
+					break;
+				case "sunrise":
+					$value = Level::TIME_SUNRISE;
+					break;
+				default:
+					$value = $this->getInteger($sender, $args[1], 0);
+					break;
+			}
 
 			foreach($sender->getServer()->getLevels() as $level){
 				$level->setTime($value);

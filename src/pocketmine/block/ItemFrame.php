@@ -46,7 +46,10 @@ class ItemFrame extends Flowable{
 	public function onActivate(Item $item, Player $player = null) : bool{
 		$tile = $this->level->getTile($this);
 		if(!($tile instanceof TileItemFrame)){
-			$tile = Tile::createTile(Tile::ITEM_FRAME, $this->getLevel(), TileItemFrame::createNBT($this));
+			$tile = Tile::createTile(Tile::ITEM_FRAME, $this->getLevelNonNull(), TileItemFrame::createNBT($this));
+			if(!($tile instanceof TileItemFrame)){
+				return true;
+			}
 		}
 
 		if($tile->hasItem()){
@@ -60,8 +63,8 @@ class ItemFrame extends Flowable{
 
 	public function onNearbyBlockChange() : void{
 		$sides = [
-			0 => Vector3::SIDE_WEST,
 			1 => Vector3::SIDE_EAST,
+			4 => Vector3::SIDE_WEST,
 			2 => Vector3::SIDE_NORTH,
 			3 => Vector3::SIDE_SOUTH
 		];
@@ -79,13 +82,13 @@ class ItemFrame extends Flowable{
 			Vector3::SIDE_NORTH => 3,
 			Vector3::SIDE_SOUTH => 2,
 			Vector3::SIDE_WEST => 1,
-			Vector3::SIDE_EAST => 0
+			Vector3::SIDE_EAST => 4
 		];
 
 		$this->meta = $faces[$face];
 		$this->level->setBlock($blockReplace, $this, true, true);
 
-		Tile::createTile(Tile::ITEM_FRAME, $this->getLevel(), TileItemFrame::createNBT($this, $face, $item, $player));
+		Tile::createTile(Tile::ITEM_FRAME, $this->getLevelNonNull(), TileItemFrame::createNBT($this, $face, $item, $player));
 
 		return true;
 

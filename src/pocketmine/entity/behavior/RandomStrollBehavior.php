@@ -26,6 +26,7 @@ namespace pocketmine\entity\behavior;
 
 use pocketmine\entity\Mob;
 use pocketmine\entity\utils\RandomPositionGenerator;
+use pocketmine\math\Vector3;
 
 class RandomStrollBehavior extends Behavior{
 
@@ -33,7 +34,7 @@ class RandomStrollBehavior extends Behavior{
 	protected $speedMultiplier = 1.0;
 	/** @var int */
 	protected $chance = 120;
-
+	/** @var Vector3|null */
 	protected $targetPos;
 
 	public function __construct(Mob $mob, float $speedMultiplier = 1.0, int $chance = 120){

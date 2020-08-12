@@ -49,7 +49,6 @@ use function count;
 use function is_a;
 
 class AnimalSpawner{
-
 	public const MAX_MOBS = 289;
 
 	/** @var CreatureType[] */
@@ -64,24 +63,6 @@ class AnimalSpawner{
 
 	/**
 	 * @param Level $level
-	 * @param int   $tick
-	 */
-	public function despawnMobs(Level $level, int $tick) : void{
-		if($tick % 20 === 0){
-			foreach($level->getEntities() as $entity){
-				if($entity instanceof Mob){
-					if(!$entity->isFlaggedForDespawn() and $entity->canDespawn()){
-						if($level->getNearestEntity($entity, 128, Player::class) === null){
-							$entity->flagForDespawn();
-						}
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * @param Level $level
 	 * @param bool  $spawnHostileMobs
 	 * @param bool  $spawnPeacefulMobs
 	 * @param array $eligibleChunks
@@ -91,7 +72,7 @@ class AnimalSpawner{
 			$spawn = $level->getSpawnLocation();
 
 			foreach(self::$creatureTypes as $creatureType){
-				if((!$creatureType->isPeacefulCreature() or $spawnPeacefulMobs) and ($creatureType->isPeacefulCreature() or $spawnHostileMobs) and ($creatureType->getCreatureClass() !== Animal::class or ($level->getTime() % 400) === 0)){
+				if((!$creatureType->isPeacefulCreature() or $spawnPeacefulMobs) and ($creatureType->isPeacefulCreature() or $spawnHostileMobs) and ($creatureType->getCreatureClass() !== Animal::class or $level->isDayTime())) {
 					$a = $creatureType->getCreatureClass();
 					$j4 = count(array_filter($level->getEntities(), function(Entity $entity) use ($a){
 						return is_a($entity, $a);

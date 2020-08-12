@@ -25,17 +25,16 @@ namespace pocketmine\network\mcpe\protocol;
 
 #include <rules/DataPacket.h>
 
-
 use pocketmine\network\mcpe\NetworkBinaryStream;
 use pocketmine\network\mcpe\NetworkSession;
-use pocketmine\utils\Binary;
 use function assert;
 use function get_class;
 use function strlen;
 use function zlib_decode;
 use function zlib_encode;
-
+use const ZLIB_ENCODING_RAW;
 #ifndef COMPILE
+use pocketmine\utils\Binary;
 #endif
 
 class BatchPacket extends DataPacket{
@@ -73,11 +72,11 @@ class BatchPacket extends DataPacket{
 	}
 
 	protected function encodePayload(){
-		$this->put(zlib_encode($this->payload, ZLIB_ENCODING_DEFLATE, $this->compressionLevel));
+		$this->put(zlib_encode($this->payload, ZLIB_ENCODING_RAW, $this->compressionLevel));
 	}
 
 	/**
-	 * @param DataPacket $packet
+	 * @return void
 	 */
 	public function addPacket(DataPacket $packet){
 		if(!$packet->canBeBatched()){
@@ -92,6 +91,7 @@ class BatchPacket extends DataPacket{
 
 	/**
 	 * @return \Generator
+	 * @phpstan-return \Generator<int, string, void, void>
 	 */
 	public function getPackets(){
 		$stream = new NetworkBinaryStream($this->payload);
@@ -108,6 +108,9 @@ class BatchPacket extends DataPacket{
 		return $this->compressionLevel;
 	}
 
+	/**
+	 * @return void
+	 */
 	public function setCompressionLevel(int $level){
 		$this->compressionLevel = $level;
 	}

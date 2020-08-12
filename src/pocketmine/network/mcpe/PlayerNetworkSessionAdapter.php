@@ -38,12 +38,15 @@ use pocketmine\network\mcpe\protocol\BlockPickRequestPacket;
 use pocketmine\network\mcpe\protocol\BookEditPacket;
 use pocketmine\network\mcpe\protocol\BossEventPacket;
 use pocketmine\network\mcpe\protocol\ClientboundMapItemDataPacket;
+use pocketmine\network\mcpe\protocol\ClientCacheStatusPacket;
 use pocketmine\network\mcpe\protocol\ClientToServerHandshakePacket;
 use pocketmine\network\mcpe\protocol\CommandBlockUpdatePacket;
 use pocketmine\network\mcpe\protocol\CommandRequestPacket;
 use pocketmine\network\mcpe\protocol\ContainerClosePacket;
 use pocketmine\network\mcpe\protocol\CraftingEventPacket;
 use pocketmine\network\mcpe\protocol\DataPacket;
+use pocketmine\network\mcpe\protocol\EmoteListPacket;
+use pocketmine\network\mcpe\protocol\EmotePacket;
 use pocketmine\network\mcpe\protocol\InteractPacket;
 use pocketmine\network\mcpe\protocol\InventoryTransactionPacket;
 use pocketmine\network\mcpe\protocol\ItemFrameDropItemPacket;
@@ -65,16 +68,21 @@ use pocketmine\network\mcpe\protocol\RequestChunkRadiusPacket;
 use pocketmine\network\mcpe\protocol\ResourcePackChunkRequestPacket;
 use pocketmine\network\mcpe\protocol\ResourcePackClientResponsePacket;
 use pocketmine\network\mcpe\protocol\RiderJumpPacket;
+use pocketmine\network\mcpe\protocol\RespawnPacket;
 use pocketmine\network\mcpe\protocol\ServerSettingsRequestPacket;
 use pocketmine\network\mcpe\protocol\SetActorMotionPacket;
 use pocketmine\network\mcpe\protocol\SetLocalPlayerAsInitializedPacket;
 use pocketmine\network\mcpe\protocol\SetPlayerGameTypePacket;
+use pocketmine\network\mcpe\protocol\SettingsCommandPacket;
 use pocketmine\network\mcpe\protocol\ShowCreditsPacket;
 use pocketmine\network\mcpe\protocol\SpawnExperienceOrbPacket;
-use pocketmine\network\mcpe\protocol\TextPacket;;
+use pocketmine\network\mcpe\protocol\TextPacket;
+use pocketmine\network\mcpe\protocol\TickSyncPacket;
+use pocketmine\network\mcpe\protocol\types\SkinAdapterSingleton;
 use pocketmine\Player;
 use pocketmine\Server;
 use pocketmine\timings\Timings;
+use pocketmine\utils\UUID;
 use function base64_encode;
 use function bin2hex;
 use function implode;
@@ -91,6 +99,9 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 	private $server;
 	/** @var Player */
 	private $player;
+
+	/** @var UUID[] */
+	private $emoteIds = [];
 
 	public function __construct(Server $server, Player $player){
 		$this->server = $server;
@@ -186,6 +197,10 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 
 	public function handleAnimate(AnimatePacket $packet) : bool{
 		return $this->player->handleAnimate($packet);
+	}
+
+	public function handleRespawn(RespawnPacket $packet) : bool{
+		return $this->player->handleRespawn($packet);
 	}
 
 	public function handleContainerClose(ContainerClosePacket $packet) : bool{
@@ -286,7 +301,7 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 	}
 
 	public function handlePlayerSkin(PlayerSkinPacket $packet) : bool{
-		return $this->player->changeSkin($packet->skin, $packet->newSkinName, $packet->oldSkinName);
+		return $this->player->changeSkin(SkinAdapterSingleton::get()->fromSkinData($packet->skin), $packet->newSkinName, $packet->oldSkinName);
 	}
 
 	public function handleBookEdit(BookEditPacket $packet) : bool{
@@ -300,9 +315,6 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 	/**
 	 * Hack to work around a stupid bug in Minecraft W10 which causes empty strings to be sent unquoted in form responses.
 	 *
-	 * @param string $json
-	 * @param bool   $assoc
-	 *
 	 * @return mixed
 	 */
 	private static function stupid_json_decode(string $json, bool $assoc = false){
@@ -310,9 +322,9 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 			$raw = $matches[1];
 			$lastComma = -1;
 			$newParts = [];
-			$quoteType = null;
+			$inQuotes = false;
 			for($i = 0, $len = strlen($raw); $i <= $len; ++$i){
-				if($i === $len or ($raw[$i] === "," and $quoteType === null)){
+				if($i === $len or ($raw[$i] === "," and !$inQuotes)){
 					$part = substr($raw, $lastComma + 1, $i - ($lastComma + 1));
 					if(trim($part) === ""){ //regular parts will have quotes or something else that makes them non-empty
 						$part = '""';
@@ -320,12 +332,13 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 					$newParts[] = $part;
 					$lastComma = $i;
 				}elseif($raw[$i] === '"'){
-					if($quoteType === null){
-						$quoteType = $raw[$i];
-					}elseif($raw[$i] === $quoteType){
-						for($backslashes = 0; $backslashes < $i && $raw[$i - $backslashes - 1] === "\\"; ++$backslashes){}
+					if(!$inQuotes){
+						$inQuotes = true;
+					}else{
+						$backslashes = 0;
+						for(; $backslashes < $i && $raw[$i - $backslashes - 1] === "\\"; ++$backslashes){}
 						if(($backslashes % 2) === 0){ //unescaped quote
-							$quoteType = null;
+							$inQuotes = false;
 						}
 					}
 				}
@@ -348,6 +361,12 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 
 	public function handleSetLocalPlayerAsInitialized(SetLocalPlayerAsInitializedPacket $packet) : bool{
 		$this->player->doFirstSpawn();
+		return true;
+	}
+
+	public function handleTickSync(TickSyncPacket $packet) : bool{
+		$this->player->sendDataPacket(TickSyncPacket::response($packet->getClientSendTime(), time()));
+
 		return true;
 	}
 
@@ -380,5 +399,41 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 
 	public function handleNetworkStackLatency(NetworkStackLatencyPacket $packet) : bool{
 		return true; //TODO: implement this properly - this is here to silence debug spam from MCPE dev builds
+	}
+
+	public function handleSettingsCommand(SettingsCommandPacket $packet) : bool{
+		// TODO: add support to suppress command message
+		$this->player->chat($packet->getCommand());
+		return true;
+	}
+
+	public function handleEmote(EmotePacket $packet) : bool{
+		if($packet->getEntityRuntimeIdField() === $this->player->getId()){
+			if(isset($this->emoteIds[$packet->getEmoteId()])){
+				$this->player->level->broadcastPacketToViewers($this->player, EmotePacket::create(
+					$this->player->getId(),
+					$packet->getEmoteId(),
+					1 << 0
+				));
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public function handleEmoteList(EmoteListPacket $packet) : bool{
+		if($packet->getPlayerEntityRuntimeId() === $this->player->getId()){
+			$this->emoteIds = [];
+
+			foreach($packet->getEmoteIds() as $emoteId){
+				$this->emoteIds[$emoteId->toString()] = $emoteId;
+			}
+
+			return true;
+		}
+
+		return false;
 	}
 }

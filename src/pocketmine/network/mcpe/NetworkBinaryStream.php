@@ -37,6 +37,13 @@ use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\IntTag;
 use pocketmine\network\mcpe\protocol\types\CommandOriginData;
 use pocketmine\network\mcpe\protocol\types\EntityLink;
+use pocketmine\network\mcpe\protocol\types\GameRuleType;
+use pocketmine\network\mcpe\protocol\types\PersonaPieceTintColor;
+use pocketmine\network\mcpe\protocol\types\PersonaSkinPiece;
+use pocketmine\network\mcpe\protocol\types\SkinAnimation;
+use pocketmine\network\mcpe\protocol\types\SkinData;
+use pocketmine\network\mcpe\protocol\types\SkinImage;
+use pocketmine\network\mcpe\protocol\types\StructureEditorData;
 use pocketmine\network\mcpe\protocol\types\StructureSettings;
 use pocketmine\utils\BinaryStream;
 use pocketmine\utils\UUID;
@@ -74,6 +81,111 @@ class NetworkBinaryStream extends BinaryStream{
 		$this->putLInt($uuid->getPart(2));
 	}
 
+	public function getSkin() : SkinData{
+		$skinId = $this->getString();
+		$skinResourcePatch = $this->getString();
+		$skinData = $this->getSkinImage();
+		$animationCount = $this->getLInt();
+		$animations = [];
+		for($i = 0; $i < $animationCount; ++$i){
+			$skinImage = $this->getSkinImage();
+			$animationType = $this->getLInt();
+			$animationFrames = $this->getLFloat();
+			$animations[] = new SkinAnimation($skinImage, $animationType, $animationFrames);
+		}
+		$capeData = $this->getSkinImage();
+		$geometryData = $this->getString();
+		$animationData = $this->getString();
+		$premium = $this->getBool();
+		$persona = $this->getBool();
+		$capeOnClassic = $this->getBool();
+		$capeId = $this->getString();
+		$fullSkinId = $this->getString();
+		$armSize = $this->getString();
+		$skinColor = $this->getString();
+		$personaPieceCount = $this->getLInt();
+		$personaPieces = [];
+		for($i = 0; $i < $personaPieceCount; ++$i){
+			$pieceId = $this->getString();
+			$pieceType = $this->getString();
+			$packId = $this->getString();
+			$isDefaultPiece = $this->getBool();
+			$productId = $this->getString();
+			$personaPieces[] = new PersonaSkinPiece($pieceId, $pieceType, $packId, $isDefaultPiece, $productId);
+		}
+		$pieceTintColorCount = $this->getLInt();
+		$pieceTintColors = [];
+		for($i = 0; $i < $pieceTintColorCount; ++$i){
+			$pieceType = $this->getString();
+			$colorCount = $this->getLInt();
+			$colors = [];
+			for($j = 0; $j < $colorCount; ++$j){
+				$colors[] = $this->getString();
+			}
+			$pieceTintColors[] = new PersonaPieceTintColor(
+				$pieceType,
+				$colors
+			);
+		}
+
+		return new SkinData($skinId, $skinResourcePatch, $skinData, $animations, $capeData, $geometryData, $animationData, $premium, $persona, $capeOnClassic, $capeId, $fullSkinId, $armSize, $skinColor, $personaPieces, $pieceTintColors);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function putSkin(SkinData $skin){
+		$this->putString($skin->getSkinId());
+		$this->putString($skin->getResourcePatch());
+		$this->putSkinImage($skin->getSkinImage());
+		$this->putLInt(count($skin->getAnimations()));
+		foreach($skin->getAnimations() as $animation){
+			$this->putSkinImage($animation->getImage());
+			$this->putLInt($animation->getType());
+			$this->putLFloat($animation->getFrames());
+		}
+		$this->putSkinImage($skin->getCapeImage());
+		$this->putString($skin->getGeometryData());
+		$this->putString($skin->getAnimationData());
+		$this->putBool($skin->isPremium());
+		$this->putBool($skin->isPersona());
+		$this->putBool($skin->isPersonaCapeOnClassic());
+		$this->putString($skin->getCapeId());
+		$this->putString($skin->getFullSkinId());
+		$this->putString($skin->getArmSize());
+		$this->putString($skin->getSkinColor());
+		$this->putLInt(count($skin->getPersonaPieces()));
+		foreach($skin->getPersonaPieces() as $piece){
+			$this->putString($piece->getPieceId());
+			$this->putString($piece->getPieceType());
+			$this->putString($piece->getPackId());
+			$this->putBool($piece->isDefaultPiece());
+			$this->putString($piece->getProductId());
+		}
+		$this->putLInt(count($skin->getPieceTintColors()));
+		foreach($skin->getPieceTintColors() as $tint){
+			$this->putString($tint->getPieceType());
+			$this->putLInt(count($tint->getColors()));
+			foreach($tint->getColors() as $color){
+				$this->putString($color);
+			}
+		}
+	}
+
+	private function getSkinImage() : SkinImage{
+		$width = $this->getLInt();
+		$height = $this->getLInt();
+		$data = $this->getString();
+
+		return new SkinImage($height, $width, $data);
+	}
+
+	private function putSkinImage(SkinImage $image) : void{
+		$this->putLInt($image->getWidth());
+		$this->putLInt($image->getHeight());
+		$this->putString($image->getData());
+	}
+
 	public function getSlot() : Item{
 		$id = $this->getVarInt();
 		if($id === 0){
@@ -89,11 +201,15 @@ class NetworkBinaryStream extends BinaryStream{
 		/** @var CompoundTag|null $nbt */
 		$nbt = null;
 		if($nbtLen === 0xffff){
-			$c = $this->getByte();
-			if($c !== 1){
-				throw new \UnexpectedValueException("Unexpected NBT count $c");
+			$nbtDataVersion = $this->getByte();
+			if($nbtDataVersion !== 1){
+				throw new \UnexpectedValueException("Unexpected NBT data version $nbtDataVersion");
 			}
-			$nbt = (new NetworkLittleEndianNBTStream())->read($this->buffer, false, $this->offset, 512);
+			$decodedNBT = (new NetworkLittleEndianNBTStream())->read($this->buffer, false, $this->offset, 512);
+			if(!($decodedNBT instanceof CompoundTag)){
+				throw new \UnexpectedValueException("Unexpected root tag type for itemstack");
+			}
+			$nbt = $decodedNBT;
 		}elseif($nbtLen !== 0){
 			throw new \UnexpectedValueException("Unexpected fake NBT length $nbtLen");
 		}
@@ -130,7 +246,6 @@ class NetworkBinaryStream extends BinaryStream{
 		return ItemFactory::get($id, $data, $cnt, $nbt);
 	}
 
-
 	public function putSlot(Item $item) : void{
 		if($item->getId() === 0){
 			$this->putVarInt(0);
@@ -161,7 +276,7 @@ class NetworkBinaryStream extends BinaryStream{
 
 		if($nbt !== null){
 			$this->putLShort(0xffff);
-			$this->putByte(1); //TODO: some kind of count field? always 1 as of 1.9.0
+			$this->putByte(1); //TODO: NBT data version (?)
 			$this->put((new NetworkLittleEndianNBTStream())->write($nbt));
 		}else{
 			$this->putLShort(0);
@@ -203,7 +318,8 @@ class NetworkBinaryStream extends BinaryStream{
 	 *
 	 * @param bool $types Whether to include metadata types along with values in the returned array
 	 *
-	 * @return array
+	 * @return mixed[]|mixed[][]
+	 * @phpstan-return array<int, mixed>|array<int, array{0: int, 1: mixed}>
 	 */
 	public function getEntityMetadata(bool $types = true) : array{
 		$count = $this->getUnsignedVarInt();
@@ -257,7 +373,8 @@ class NetworkBinaryStream extends BinaryStream{
 	/**
 	 * Writes entity metadata to the packet buffer.
 	 *
-	 * @param array $metadata
+	 * @param mixed[][] $metadata
+	 * @phpstan-param array<int, array{0: int, 1: mixed}> $metadata
 	 */
 	public function putEntityMetadata(array $metadata) : void{
 		$this->putUnsignedVarInt(count($metadata));
@@ -354,16 +471,13 @@ class NetworkBinaryStream extends BinaryStream{
 
 	/**
 	 * Reads and returns an EntityUniqueID
-	 * @return int
 	 */
-	public function getEntityUniqueId() : int{
+	final public function getEntityUniqueId() : int{
 		return $this->getVarLong();
 	}
 
 	/**
 	 * Writes an EntityUniqueID
-	 *
-	 * @param int $eid
 	 */
 	public function putEntityUniqueId(int $eid) : void{
 		$this->putVarLong($eid);
@@ -371,16 +485,13 @@ class NetworkBinaryStream extends BinaryStream{
 
 	/**
 	 * Reads and returns an EntityRuntimeID
-	 * @return int
 	 */
-	public function getEntityRuntimeId() : int{
+	final public function getEntityRuntimeId() : int{
 		return $this->getUnsignedVarLong();
 	}
 
 	/**
-	 * Writes an EntityUniqueID
-	 *
-	 * @param int $eid
+	 * Writes an EntityRuntimeID
 	 */
 	public function putEntityRuntimeId(int $eid) : void{
 		$this->putUnsignedVarLong($eid);
@@ -389,9 +500,9 @@ class NetworkBinaryStream extends BinaryStream{
 	/**
 	 * Reads an block position with unsigned Y coordinate.
 	 *
-	 * @param int &$x
-	 * @param int &$y
-	 * @param int &$z
+	 * @param int $x reference parameter
+	 * @param int $y reference parameter
+	 * @param int $z reference parameter
 	 */
 	public function getBlockPosition(&$x, &$y, &$z) : void{
 		$x = $this->getVarInt();
@@ -401,10 +512,6 @@ class NetworkBinaryStream extends BinaryStream{
 
 	/**
 	 * Writes a block position with unsigned Y coordinate.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
 	 */
 	public function putBlockPosition(int $x, int $y, int $z) : void{
 		$this->putVarInt($x);
@@ -415,9 +522,9 @@ class NetworkBinaryStream extends BinaryStream{
 	/**
 	 * Reads a block position with a signed Y coordinate.
 	 *
-	 * @param int &$x
-	 * @param int &$y
-	 * @param int &$z
+	 * @param int $x reference parameter
+	 * @param int $y reference parameter
+	 * @param int $z reference parameter
 	 */
 	public function getSignedBlockPosition(&$x, &$y, &$z) : void{
 		$x = $this->getVarInt();
@@ -427,10 +534,6 @@ class NetworkBinaryStream extends BinaryStream{
 
 	/**
 	 * Writes a block position with a signed Y coordinate.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
 	 */
 	public function putSignedBlockPosition(int $x, int $y, int $z) : void{
 		$this->putVarInt($x);
@@ -440,15 +543,12 @@ class NetworkBinaryStream extends BinaryStream{
 
 	/**
 	 * Reads a floating-point Vector3 object with coordinates rounded to 4 decimal places.
-	 *
-	 * @return Vector3
 	 */
 	public function getVector3() : Vector3{
-		return new Vector3(
-			$this->getRoundedLFloat(4),
-			$this->getRoundedLFloat(4),
-			$this->getRoundedLFloat(4)
-		);
+		$x = $this->getLFloat();
+		$y = $this->getLFloat();
+		$z = $this->getLFloat();
+		return new Vector3($x, $y, $z);
 	}
 
 	/**
@@ -458,11 +558,9 @@ class NetworkBinaryStream extends BinaryStream{
 	 * For all other purposes, use the non-nullable version.
 	 *
 	 * @see NetworkBinaryStream::putVector3()
-	 *
-	 * @param Vector3|null $vector
 	 */
 	public function putVector3Nullable(?Vector3 $vector) : void{
-		if($vector){
+		if($vector !== null){
 			$this->putVector3($vector);
 		}else{
 			$this->putLFloat(0.0);
@@ -473,8 +571,6 @@ class NetworkBinaryStream extends BinaryStream{
 
 	/**
 	 * Writes a floating-point Vector3 object
-	 *
-	 * @param Vector3 $vector
 	 */
 	public function putVector3(Vector3 $vector) : void{
 		$this->putLFloat($vector->x);
@@ -483,7 +579,7 @@ class NetworkBinaryStream extends BinaryStream{
 	}
 
 	public function getByteRotation() : float{
-		return (float) ($this->getByte() * (360 / 256));
+		return ($this->getByte() * (360 / 256));
 	}
 
 	public function putByteRotation(float $rotation) : void{
@@ -494,7 +590,8 @@ class NetworkBinaryStream extends BinaryStream{
 	 * Reads gamerules
 	 * TODO: implement this properly
 	 *
-	 * @return array, members are in the structure [name => [type, value]]
+	 * @return mixed[][], members are in the structure [name => [type, value]]
+	 * @phpstan-return array<string, array{0: int, 1: bool|int|float}>
 	 */
 	public function getGameRules() : array{
 		$count = $this->getUnsignedVarInt();
@@ -504,13 +601,13 @@ class NetworkBinaryStream extends BinaryStream{
 			$type = $this->getUnsignedVarInt();
 			$value = null;
 			switch($type){
-				case 1:
+				case GameRuleType::BOOL:
 					$value = $this->getBool();
 					break;
-				case 2:
+				case GameRuleType::INT:
 					$value = $this->getUnsignedVarInt();
 					break;
-				case 3:
+				case GameRuleType::FLOAT:
 					$value = $this->getLFloat();
 					break;
 			}
@@ -525,7 +622,8 @@ class NetworkBinaryStream extends BinaryStream{
 	 * Writes a gamerule array, members should be in the structure [name => [type, value]]
 	 * TODO: implement this properly
 	 *
-	 * @param array $rules
+	 * @param mixed[][] $rules
+	 * @phpstan-param array<string, array{0: int, 1: bool|int|float}> $rules
 	 */
 	public function putGameRules(array $rules) : void{
 		$this->putUnsignedVarInt(count($rules));
@@ -533,41 +631,34 @@ class NetworkBinaryStream extends BinaryStream{
 			$this->putString($name);
 			$this->putUnsignedVarInt($rule[0]);
 			switch($rule[0]){
-				case 1:
+				case GameRuleType::BOOL:
 					$this->putBool($rule[1]);
 					break;
-				case 2:
+				case GameRuleType::INT:
 					$this->putUnsignedVarInt($rule[1]);
 					break;
-				case 3:
+				case GameRuleType::FLOAT:
 					$this->putLFloat($rule[1]);
 					break;
 			}
 		}
 	}
 
-	/**
-	 * @return EntityLink
-	 */
 	protected function getEntityLink() : EntityLink{
-		$link = new EntityLink();
-
-		$link->riddenId = $this->getEntityUniqueId();
-		$link->riderId = $this->getEntityUniqueId();
-		$link->type = $this->getByte();
-		$link->immediate = $this->getBool();
-
-		return $link;
+		$fromEntityUniqueId = $this->getEntityUniqueId();
+		$toEntityUniqueId = $this->getEntityUniqueId();
+		$type = $this->getByte();
+		$immediate = $this->getBool();
+		$causedByRider = $this->getBool();
+		return new EntityLink($fromEntityUniqueId, $toEntityUniqueId, $type, $immediate, $causedByRider);
 	}
 
-	/**
-	 * @param EntityLink $link
-	 */
 	protected function putEntityLink(EntityLink $link) : void{
-		$this->putEntityUniqueId($link->riddenId);
-		$this->putEntityUniqueId($link->riderId);
+		$this->putEntityUniqueId($link->fromEntityUniqueId);
+		$this->putEntityUniqueId($link->toEntityUniqueId);
 		$this->putByte($link->type);
 		$this->putBool($link->immediate);
+		$this->putBool($link->causedByRider);
 	}
 
 	protected function getCommandOriginData() : CommandOriginData{
@@ -578,7 +669,7 @@ class NetworkBinaryStream extends BinaryStream{
 		$result->requestId = $this->getString();
 
 		if($result->type === CommandOriginData::ORIGIN_DEV_CONSOLE or $result->type === CommandOriginData::ORIGIN_TEST){
-			$result->varlong1 = $this->getVarLong();
+			$result->playerEntityUniqueId = $this->getVarLong();
 		}
 
 		return $result;
@@ -590,7 +681,7 @@ class NetworkBinaryStream extends BinaryStream{
 		$this->putString($data->requestId);
 
 		if($data->type === CommandOriginData::ORIGIN_DEV_CONSOLE or $data->type === CommandOriginData::ORIGIN_TEST){
-			$this->putVarLong($data->varlong1);
+			$this->putVarLong($data->playerEntityUniqueId);
 		}
 	}
 
@@ -610,6 +701,7 @@ class NetworkBinaryStream extends BinaryStream{
 		$result->mirror = $this->getByte();
 		$result->integrityValue = $this->getFloat();
 		$result->integritySeed = $this->getInt();
+		$result->pivot = $this->getVector3();
 
 		return $result;
 	}
@@ -628,5 +720,42 @@ class NetworkBinaryStream extends BinaryStream{
 		$this->putByte($structureSettings->mirror);
 		$this->putFloat($structureSettings->integrityValue);
 		$this->putInt($structureSettings->integritySeed);
+		$this->putVector3($structureSettings->pivot);
+	}
+
+	protected function getStructureEditorData() : StructureEditorData{
+		$result = new StructureEditorData();
+
+		$result->structureName = $this->getString();
+		$result->structureDataField = $this->getString();
+
+		$result->includePlayers = $this->getBool();
+		$result->showBoundingBox = $this->getBool();
+
+		$result->structureBlockType = $this->getVarInt();
+		$result->structureSettings = $this->getStructureSettings();
+		$result->structureRedstoneSaveMove = $this->getVarInt();
+
+		return $result;
+	}
+
+	protected function putStructureEditorData(StructureEditorData $structureEditorData) : void{
+		$this->putString($structureEditorData->structureName);
+		$this->putString($structureEditorData->structureDataField);
+
+		$this->putBool($structureEditorData->includePlayers);
+		$this->putBool($structureEditorData->showBoundingBox);
+
+		$this->putVarInt($structureEditorData->structureBlockType);
+		$this->putStructureSettings($structureEditorData->structureSettings);
+		$this->putVarInt($structureEditorData->structureRedstoneSaveMove);
+	}
+
+	public function readGenericTypeNetworkId() : int{
+		return $this->getVarInt();
+	}
+
+	public function writeGenericTypeNetworkId(int $id) : void{
+		$this->putVarInt($id);
 	}
 }

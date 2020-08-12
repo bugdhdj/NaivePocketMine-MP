@@ -29,7 +29,6 @@ use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
-
 abstract class Door extends Transparent{
 
 	public function isSolid() : bool{
@@ -40,7 +39,7 @@ abstract class Door extends Transparent{
 		return ($this->getFullDamage() & 0x04) > 0;
 	}
 
-	private function getFullDamage(){
+	private function getFullDamage() : int{
 		$damage = $this->getDamage();
 		$isUp = ($damage & 0x08) > 0;
 
@@ -206,9 +205,9 @@ abstract class Door extends Transparent{
 
 	public function onNearbyBlockChange() : void{
 		if($this->getSide(Vector3::SIDE_DOWN)->getId() === self::AIR){ //Replace with common break method
-			$this->getLevel()->setBlock($this, BlockFactory::get(Block::AIR), false);
+			$this->getLevelNonNull()->setBlock($this, BlockFactory::get(Block::AIR), false);
 			if($this->getSide(Vector3::SIDE_UP) instanceof Door){
-				$this->getLevel()->setBlock($this->getSide(Vector3::SIDE_UP), BlockFactory::get(Block::AIR), false);
+				$this->getLevelNonNull()->setBlock($this->getSide(Vector3::SIDE_UP), BlockFactory::get(Block::AIR), false);
 			}
 		}
 	}
@@ -235,8 +234,8 @@ abstract class Door extends Transparent{
 			}
 
 			$this->setDamage($player->getDirection() & 0x03);
-			$this->getLevel()->setBlock($blockReplace, $this, true, true); //Bottom
-			$this->getLevel()->setBlock($blockUp, BlockFactory::get($this->getId(), $metaUp), true); //Top
+			$this->getLevelNonNull()->setBlock($blockReplace, $this, true, true); //Bottom
+			$this->getLevelNonNull()->setBlock($blockUp, BlockFactory::get($this->getId(), $metaUp), true); //Top
 			return true;
 		}
 
