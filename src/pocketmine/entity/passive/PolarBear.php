@@ -52,6 +52,7 @@ class PolarBear extends Animal{
 		$this->behaviorPool->setBehavior(5, new LookAtPlayerBehavior($this, 16.0));
 		$this->behaviorPool->setBehavior(6, new RandomLookAroundBehavior($this));
 
+		//TODO: attack to foxes
 		$this->targetBehaviorPool->setBehavior(0, new HurtByTargetBehavior($this));
 	}
 
@@ -63,7 +64,6 @@ class PolarBear extends Animal{
 		parent::initEntity();
 	}
 
-	//TODO: attack fixes
 	public function getName() : string{
 		return "Polar Bear";
 	}

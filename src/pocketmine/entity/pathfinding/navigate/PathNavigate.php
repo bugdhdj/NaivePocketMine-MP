@@ -41,9 +41,9 @@ abstract class PathNavigate{
 	/** @var PathEntity|null */
 	protected $currentPath;
 	/** @var float */
-	protected $speed;
+	protected $speed = 1.0;
 
-	private $pathSearchRange = 0;
+	private $pathSearchRange = 16;
 	private $totalTicks = 0;
 	private $ticksAtLastPos = 0;
 	private $lastPosCheck;
@@ -54,7 +54,6 @@ abstract class PathNavigate{
 	public function __construct(Mob $entity){
 		$this->theEntity = $entity;
 		$this->level = $entity->getLevel();
-		$this->pathSearchRange = 16;
 		$this->pathFinder = $this->getPathFinder();
 		$this->lastPosCheck = new Vector3();
 	}

@@ -26,11 +26,13 @@ namespace pocketmine\entity\passive;
 use pocketmine\entity\behavior\AvoidMobTypeBehavior;
 use pocketmine\entity\behavior\RandomSwimBehavior;
 use pocketmine\entity\behavior\SwimWanderBehavior;
+use pocketmine\entity\helper\EntityLookHelper;
 use pocketmine\entity\WaterAnimal;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\nbt\tag\ByteTag;
 use pocketmine\nbt\tag\IntTag;
+use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\Player;
 use function mt_rand;
 
@@ -118,6 +120,27 @@ class TropicalFish extends WaterAnimal{
 			$drops[] = ItemFactory::get(Item::BONE, 1, mt_rand(1, 2));
 		}
 		return $drops;
+	}
+
+	public function entityBaseTick(int $tickDiff = 1) : bool{
+		if(!$this->isInsideOfWater()){
+			$this->jumpHelper->setJumping(true);
+		}
+
+		return parent::entityBaseTick($tickDiff);
+	}
+
+	public function jump() : void{
+		parent::jump();
+
+		$this->yaw = $this->random->nextBoundedInt(360);
+		$this->headYaw = $this->yaw;
+		$this->yawOffset = $this->yaw;
+
+		$this->setAIMoveSpeed($speed = $this->getMovementSpeed() * 2);
+		$this->setMoveForward($speed);
+
+		$this->level->broadcastLevelSoundEvent($this, LevelSoundEventPacket::SOUND_JUMP, -1, self::TROPICAL_FISH);
 	}
 
 	protected function applyGravity() : void{

@@ -55,7 +55,9 @@ class SwimWanderBehavior extends Behavior{
 
 	public function onStart() : void{
 		$this->mob->pitch = 0;
-		$this->mob->yaw = $this->random->nextFloat() * 360;
+		$this->mob->yaw = $this->random->nextBoundedInt(360);
+		$this->mob->headYaw = $this->mob->yaw;
+		$this->mob->yawOffset = $this->mob->yaw;
 		$this->mob->setMoveForward($speed = $this->speedMultiplier * $this->mob->getMovementSpeed());
 		$this->mob->setAIMoveSpeed($speed);
 	}

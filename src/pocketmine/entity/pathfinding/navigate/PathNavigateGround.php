@@ -103,8 +103,8 @@ class PathNavigateGround extends PathNavigate{
 	public function isDirectPathBetweenPoints(Vector3 $from, Vector3 $to, Vector3 $size) : bool{
 		$currentX = $from->getFloorX();
 		$currentZ = $from->getFloorZ();
-		$dX = $to->x - $from->x;
-		$dZ = $to->z - $from->z;
+		$dX = $to->x - $from->x + 0.001;
+		$dZ = $to->z - $from->z + 0.001;
 		$distNormal = 1 / sqrt($dX ** 2 + $dZ ** 2);
 		$dX *= $distNormal;
 		$dZ *= $distNormal;
