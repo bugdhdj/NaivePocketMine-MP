@@ -1697,6 +1697,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 
 		if(!$this->isAlive()){
 			if(!$this->isKilled){
+				$this->isKilled = true;
 				$this->kill();
 			}elseif($this->onDeathUpdate($tickDiff)){
 				$this->flagForDespawn();
