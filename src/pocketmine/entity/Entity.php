@@ -1901,7 +1901,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	}
 
 	public function getRiderSeatPosition(int $seatNumber = 0) : Vector3{
-		return new Vector3(0, 0, 0);
+		return new Vector3(0, $this->getEyeHeight(), 0);
 	}
 
 	public function getSeatCount() : int{
