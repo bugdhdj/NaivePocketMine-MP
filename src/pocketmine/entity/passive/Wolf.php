@@ -75,7 +75,7 @@ class Wolf extends Tamable{
 		$this->setAttackDamage(3);
 		$this->setFollowRange(16);
 
-		$this->propertyManager->setInt(self::DATA_COLOR, 14); // collar color
+		$this->propertyManager->setByte(self::DATA_COLOR, 14); // collar color
 		$this->setTamed(false);
 
 		parent::initEntity();
