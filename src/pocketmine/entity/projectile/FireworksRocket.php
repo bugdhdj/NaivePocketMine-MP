@@ -23,26 +23,26 @@ declare(strict_types=1);
 
 namespace pocketmine\entity\projectile;
 
-use pocketmine\block\Block;
-use pocketmine\math\RayTraceResult;
+use pocketmine\event\entity\ProjectileHitEvent;
+use pocketmine\item\Item;
+use pocketmine\item\ItemFactory;
+use pocketmine\level\particle\FireworksSparkParticle;
+use pocketmine\level\particle\ItemBreakParticle;
+use pocketmine\level\particle\SplashParticle;
+use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 
-abstract class Throwable extends Projectile{
+class FireworksRocket extends Throwable{
+	public const NETWORK_ID = self::FIREWORKS_ROCKET;
 
-	public $width = 0.25;
-	public $height = 0.25;
+	protected function onHit(ProjectileHitEvent $event) : void{
 
-	protected $gravity = 0.03;
-	protected $drag = 0.01;
-
-	protected function onHitBlock(Block $blockHit, RayTraceResult $hitResult) : void{
-		parent::onHitBlock($blockHit, $hitResult);
-		$this->flagForDespawn();
 	}
 
-	public function move(float $dx, float $dy, float $dz) : void{
-		parent::move($dx,$dy,$dz);
-		if($dy<0){
-			$this->flagForDespawn();
+	public function flagForDespawn() : void{
+		parent::flagForDespawn();
+		for($i = 0; $i < 20; ++$i){
+			$this->level->addParticle(new FireworksSparkParticle($this->add(rand(-2,2),rand(-2,2),rand(-2,2))));
 		}
+		$this->getLevelNonNull()->broadcastLevelSoundEvent($this, LevelSoundEventPacket::SOUND_BLAST);
 	}
 }

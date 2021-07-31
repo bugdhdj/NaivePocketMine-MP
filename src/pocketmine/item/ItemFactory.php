@@ -26,6 +26,7 @@ namespace pocketmine\item;
 use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
 use pocketmine\nbt\tag\CompoundTag;
+
 use function constant;
 use function defined;
 use function explode;
@@ -117,7 +118,6 @@ class ItemFactory{
 		self::registerItem(new GoldChestplate());
 		self::registerItem(new GoldLeggings());
 		self::registerItem(new GoldBoots());
-		self::registerItem(new Elytra());
 		self::registerItem(new Item(Item::FLINT, 0, "Flint"));
 		self::registerItem(new RawPorkchop());
 		self::registerItem(new CookedPorkchop());
@@ -144,7 +144,6 @@ class ItemFactory{
 		//TODO: CHEST_MINECART
 
 		self::registerItem(new Egg());
-		self::registerItem(new Item(Item::FIREWORKS, 0, "Firworks"));
 		self::registerItem(new Compass());
 		self::registerItem(new FishingRod());
 		self::registerItem(new Clock());
@@ -201,7 +200,7 @@ class ItemFactory{
 		//TODO: CARROTONASTICK
 		self::registerItem(new Item(Item::NETHER_STAR, 0, "Nether Star"));
 		self::registerItem(new PumpkinPie());
-		//TODO: FIREWORKS
+		self::registerItem(new Fireworks());
 		//TODO: FIREWORKSCHARGE
 		//TODO: ENCHANTED_BOOK
 		self::registerItem(new ItemBlock(Block::COMPARATOR_BLOCK, 0, Item::COMPARATOR));
@@ -241,7 +240,7 @@ class ItemFactory{
 		//TODO: LINGERING_POTION
 		//TODO: SPARKLER
 		//TODO: COMMAND_BLOCK_MINECART
-		//TODO: ELYTRA
+		self::registerItem(new Elytra());
 		self::registerItem(new Item(Item::SHULKER_SHELL, 0, "Shulker Shell"));
 		self::registerItem(new Banner());
 		//TODO: MEDICINE
