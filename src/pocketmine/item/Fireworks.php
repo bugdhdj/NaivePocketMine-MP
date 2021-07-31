@@ -26,15 +26,21 @@ namespace pocketmine\item;
 
 use pocketmine\block\Block;
 use pocketmine\entity\Entity;
+use pocketmine\entity\object\FireworksRocket;
+use pocketmine\entity\object\FireworksRocketStill;
+use pocketmine\level\particle\FireworksSparkParticle;
+use pocketmine\level\particle\ItemBreakParticle;
 use pocketmine\level\sound\BlazeShootSound;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ListTag;
 use pocketmine\Player;
+use pocketmine\Server;
 
 class Fireworks extends Item{
 	/** @var float */
 	public const BOOST_POWER = 1.25;
+	public const BOOST_TICK = 20*2;
 
 	public const TYPE_SMALL_SPHERE = 0;
 	public const TYPE_HUGE_SPHERE = 1;
@@ -58,6 +64,8 @@ class Fireworks extends Item{
 	public const COLOR_DARK_PINK = "\x0d";
 	public const COLOR_GOLD = "\x0e";
 	public const COLOR_WHITE = "\x0f";
+
+	private static array $boost_players = [];
 
 	public function __construct(int $meta = 0){
 		parent::__construct(self::FIREWORKS, $meta, "Fireworks");
@@ -114,17 +122,33 @@ class Fireworks extends Item{
 		if($player->isGliding()){
 			$motion = new Vector3((-sin($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI) * self::BOOST_POWER), (-sin($player->pitch / 180 * M_PI) * self::BOOST_POWER), (cos($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI) * self::BOOST_POWER));
 
-			$nbt = Entity::createBaseNBT($player, $motion->subtract(0, 0.1, 0), lcg_value() * 360, 90);
-			$entity = Entity::createEntity("FireworksRocket", $player->getLevel(), $nbt, $this);
+			$nbt = Entity::createBaseNBT($player, new Vector3(0,0,0), lcg_value() * 360, 90);
+			$entity = Entity::createEntity("FireworksRocketStill", $player->getLevel(), $nbt, $this);
 
-			if($entity instanceof Entity){
+			if($entity instanceof FireworksRocket){
 				$this->pop();
 				$entity->spawnToAll();
 				$player->setMotion($motion);
 				$player->getLevel()->addSound(new BlazeShootSound($player));
+				self::$boost_players[$player->getLowerCaseName()]=self::BOOST_TICK;
 			}
 		}
 
 		return true;
+	}
+
+	public function onUpdate(Player $player) : void{
+		$name=$player->getLowerCaseName();
+		if(isset(self::$boost_players[$name]) && $player->isGliding()){
+			$motion = new Vector3((-sin($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI) * self::BOOST_POWER), (-sin($player->pitch / 180 * M_PI) * self::BOOST_POWER), (cos($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI) * self::BOOST_POWER));
+			$player->setMotion($motion);
+			if(self::$boost_players[$name]%2==0){
+				$player->getLevel()->addParticle(new FireworksSparkParticle($player));
+			}
+			self::$boost_players[$name]-=1;
+			if(self::$boost_players[$name]==0){
+				unset(self::$boost_players[$name]);
+			}
+		}
 	}
 }

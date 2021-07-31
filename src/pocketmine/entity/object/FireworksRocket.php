@@ -27,6 +27,7 @@ namespace pocketmine\entity\object;
 use pocketmine\entity\Entity;
 use pocketmine\item\Fireworks;
 use pocketmine\level\Level;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\network\mcpe\protocol\ActorEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;

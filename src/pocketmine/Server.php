@@ -2667,6 +2667,14 @@ class Server{
 	}
 
 	/**
+	 * Returns server tickrate
+	 * @return int
+	 */
+	public function getProfilingTickRate():int{
+		return $this->profilingTickRate;
+	}
+
+	/**
 	 * Called when something attempts to serialize the server instance.
 	 *
 	 * @throws \BadMethodCallException because Server instances cannot be serialized
