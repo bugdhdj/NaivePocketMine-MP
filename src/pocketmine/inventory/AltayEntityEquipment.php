@@ -42,7 +42,7 @@ class AltayEntityEquipment extends BaseInventory{
 	}
 
 	public function getName() : string{
-		return "Altay Entity Equipment";
+		return "Naive Entity Equipment";
 	}
 
 	public function getDefaultSize() : int{

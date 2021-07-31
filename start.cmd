@@ -1,5 +1,5 @@
 @echo off
-TITLE Altay server software for Minecraft: Bedrock Edition
+TITLE Naive server software for Minecraft: Bedrock Edition
 cd /d %~dp0
 
 if exist bin\php\php.exe (
@@ -9,13 +9,13 @@ if exist bin\php\php.exe (
 	set PHP_BINARY=php
 )
 
-if exist Altay.phar (
-	set POCKETMINE_FILE=Altay.phar
+if exist Naive.phar (
+	set POCKETMINE_FILE=Naive.phar
 ) else (
 	if exist src\pocketmine\PocketMine.php (
 		set POCKETMINE_FILE=src\pocketmine\PocketMine.php
 	) else (
-		echo Altay.phar not found
+		echo Naive.phar not found
 		echo Downloads can be found at https://github.com/TuranicTeam/Altay/releases
 		pause
 		exit 1

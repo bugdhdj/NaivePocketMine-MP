@@ -367,11 +367,11 @@ class Server{
 	/** @var bool */
 	public $mobAiEnabled = true;
 
-	public function loadAltayConfig(){
-		$this->keepInventory = $this->getAltayProperty("player.keep-inventory", false);
-		$this->keepExperience = $this->getAltayProperty("player.keep-experience", false);
-		$this->folderPluginLoader = $this->getAltayProperty("developer.folder-plugin-loader", true);
-		$this->mobAiEnabled = $this->getAltayProperty("level.enable-mob-ai", false);
+	public function loadNaiveConfig(){
+		$this->keepInventory = $this->getNaiveProperty("player.keep-inventory", false);
+		$this->keepExperience = $this->getNaiveProperty("player.keep-experience", false);
+		$this->folderPluginLoader = $this->getNaiveProperty("developer.folder-plugin-loader", true);
+		$this->mobAiEnabled = $this->getNaiveProperty("level.enable-mob-ai", false);
 	}
 
 	public function getName() : string{
@@ -1147,7 +1147,7 @@ class Server{
 		return $this->propertyCache[$variable] ?? $defaultValue;
 	}
 
-	public function getAltayProperty(string $variable, $defaultValue = null){
+	public function getNaiveProperty(string $variable, $defaultValue = null){
 		if(!array_key_exists($variable, $this->altayPropertyCache)){
 			$this->altayPropertyCache[$variable] = $this->altayConfig->getNested($variable);
 		}
@@ -1373,8 +1373,8 @@ class Server{
 				mkdir($pluginPath, 0777);
 			}
 
-			if(!file_exists($pluginPath . "Altay/")){
-				mkdir($pluginPath . "Altay/", 0777);
+			if(!file_exists($pluginPath . "Naive/")){
+				mkdir($pluginPath . "Naive/", 0777);
 			}
 
 			$this->dataPath = realpath($dataPath) . DIRECTORY_SEPARATOR;
@@ -1396,7 +1396,7 @@ class Server{
 				@file_put_contents($this->dataPath . "altay.yml", $content);
 			}
 			$this->altayConfig = new Config($this->dataPath . "altay.yml", Config::YAML, []);
-			$this->loadAltayConfig();
+			$this->loadNaiveConfig();
 
 			$this->logger->info("Loading server properties...");
 			$this->properties = new Config($this->dataPath . "server.properties", Config::PROPERTIES, [
@@ -1645,7 +1645,7 @@ class Server{
 
 			if($this->isAllowNether() and $this->getNetherLevel() === null){
 				/** @var string $netherLevelName */
-				$netherLevelName = $this->getAltayProperty("dimensions.nether.level-name", "nether");
+				$netherLevelName = $this->getNaiveProperty("dimensions.nether.level-name", "nether");
 				if(trim($netherLevelName) == ""){
 					$netherLevelName = "nether";
 				}
@@ -1658,7 +1658,7 @@ class Server{
 
 			if($this->isAllowTheEnd() and $this->getTheEndLevel() === null){
 				/** @var string $endLevelName */
-				$endLevelName = $this->getAltayProperty("dimensions.the-end.level-name", "end");
+				$endLevelName = $this->getNaiveProperty("dimensions.the-end.level-name", "end");
 				if(trim($endLevelName) == ""){
 					$endLevelName = "end";
 				}
@@ -1693,11 +1693,11 @@ class Server{
 	}
 
 	public function isAllowNether() : bool{
-		return (bool) $this->getAltayProperty("dimensions.nether.active", true);
+		return (bool) $this->getNaiveProperty("dimensions.nether.active", true);
 	}
 
 	public function isAllowTheEnd() : bool{
-		return (bool) $this->getAltayProperty("dimensions.the-end.active", true);
+		return (bool) $this->getNaiveProperty("dimensions.the-end.active", true);
 	}
 
 	/**
@@ -2463,7 +2463,7 @@ class Server{
 	}
 
     private function getAdditionalPluginDirs() : array{
-        return $this->getAltayProperty("additional-plugin-dirs", []);
+        return $this->getNaiveProperty("additional-plugin-dirs", []);
     }
 
 	/**

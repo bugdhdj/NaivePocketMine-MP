@@ -16,10 +16,10 @@ if($php -ne ""){
 }
 
 if($file -eq ""){
-	if(Test-Path "Altay.phar"){
-	    $file = "Altay.phar"
+	if(Test-Path "Naive.phar"){
+	    $file = "Naive.phar"
 	}else{
-	    echo "Altay.phar not found"
+	    echo "Naive.phar not found"
 	    echo "Downloads can be found at https://github.com/TuranicTeam/Altay/releases"
 	    pause
 	    exit 1

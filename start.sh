@@ -32,10 +32,10 @@ if [ "$PHP_BINARY" == "" ]; then
 fi
 
 if [ "$POCKETMINE_FILE" == "" ]; then
-	if [ -f ./Altay.phar ]; then
-		POCKETMINE_FILE="./Altay.phar"
+	if [ -f ./Naive.phar ]; then
+		POCKETMINE_FILE="./Naive.phar"
 	else
-		echo "Altay.phar not found"
+		echo "Naive.phar not found"
 		echo "Downloads can be found at https://github.com/TuranicTeam/Altay/releases"
 		exit 1
 	fi

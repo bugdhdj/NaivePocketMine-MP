@@ -80,7 +80,7 @@ class Slime extends Monster{
 		$this->moveHelper = new EntitySlimeMoveHelper($this);
 
 		if($this->namedtag->hasTag("Size", IntTag::class)){
-			// Before Altay used IntTag.
+			// Before Naive used IntTag.
 			$this->setSlimeSize($this->namedtag->getInt("Size"));
 			$this->namedtag->removeTag("Size");
 		}elseif($this->namedtag->hasTag("Size", ByteTag::class)){
