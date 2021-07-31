@@ -267,6 +267,18 @@ class Utils{
 	}
 
 	/**
+	 * Returns if Naive is running under WSL.
+	 * @return bool
+	 */
+	public static function getUnderWSL() : bool{
+		if(Utils::getOS()!==Utils::OS_LINUX){
+			return false;
+		}
+		$os_version=file_get_contents('/proc/version');
+		return strstr($os_version,'Microsoft')!==false;
+	}
+
+	/**
 	 * Returns the current Operating System
 	 * Windows => win
 	 * MacOS => mac
