@@ -50,7 +50,7 @@ class SetBlockCommand extends VanillaCommand{
 				]))
 			]
 		]);
-		$this->setPermission("altay.command.setblock");
+		$this->setPermission("naive.command.setblock");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){

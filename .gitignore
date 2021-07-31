@@ -11,7 +11,7 @@ crashdumps/*
 *.phar
 server.properties
 /pocketmine.yml
-/altay.yml
+/naive.yml
 memory_dumps/*
 resource_packs/
 server.lock

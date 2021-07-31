@@ -42,7 +42,7 @@ class KillCommand extends VanillaCommand{
 	public function __construct(string $name){
 		parent::__construct($name, "%pocketmine.command.kill.description", "%pocketmine.command.kill.usage", [], [[new CommandParameter("target", AvailableCommandsPacket::ARG_TYPE_TARGET, false)]]);
 
-		$this->setPermission("altay.command.kill.self;altay.command.kill.other");
+		$this->setPermission("naive.command.kill.self;naive.command.kill.other");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){
@@ -55,7 +55,7 @@ class KillCommand extends VanillaCommand{
 		}
 
 		if(count($args) === 1){
-			if(!$sender->hasPermission("altay.command.kill.other")){
+			if(!$sender->hasPermission("naive.command.kill.other")){
 				$sender->sendMessage($sender->getServer()->getLanguage()->translateString(TextFormat::RED . "%commands.generic.permission"));
 
 				return true;
@@ -75,7 +75,7 @@ class KillCommand extends VanillaCommand{
 		}
 
 		if($sender instanceof Player){
-			if(!$sender->hasPermission("altay.command.kill.self")){
+			if(!$sender->hasPermission("naive.command.kill.self")){
 				$sender->sendMessage($sender->getServer()->getLanguage()->translateString(TextFormat::RED . "%commands.generic.permission"));
 
 				return true;

@@ -331,13 +331,13 @@ class Server{
 	private $propertyCache = [];
 
 	/** @var mixed[] */
-	private $altayPropertyCache = [];
+	private $naivePropertyCache = [];
 
 	/** @var Config */
 	private $config;
 
 	/** @var Config */
-	private $altayConfig;
+	private $naiveConfig;
 
 	/** @var Player[] */
 	private $players = [];
@@ -1148,11 +1148,11 @@ class Server{
 	}
 
 	public function getNaiveProperty(string $variable, $defaultValue = null){
-		if(!array_key_exists($variable, $this->altayPropertyCache)){
-			$this->altayPropertyCache[$variable] = $this->altayConfig->getNested($variable);
+		if(!array_key_exists($variable, $this->naivePropertyCache)){
+			$this->naivePropertyCache[$variable] = $this->naiveConfig->getNested($variable);
 		}
 
-		return $this->altayPropertyCache[$variable] ?? $defaultValue;
+		return $this->naivePropertyCache[$variable] ?? $defaultValue;
 	}
 	
 	public function getConfigString(string $variable, string $defaultValue = "") : string{
@@ -1390,12 +1390,12 @@ class Server{
 			}
 			$this->config = new Config($this->dataPath . "pocketmine.yml", Config::YAML, []);
 
-			$this->logger->info("Loading altay.yml...");
-			if(!file_exists($this->dataPath . "altay.yml")){
-				$content = file_get_contents(\pocketmine\RESOURCE_PATH . "altay.yml");
-				@file_put_contents($this->dataPath . "altay.yml", $content);
+			$this->logger->info("Loading naive.yml...");
+			if(!file_exists($this->dataPath . "naive.yml")){
+				$content = file_get_contents(\pocketmine\RESOURCE_PATH . "naive.yml");
+				@file_put_contents($this->dataPath . "naive.yml", $content);
 			}
-			$this->altayConfig = new Config($this->dataPath . "altay.yml", Config::YAML, []);
+			$this->naiveConfig = new Config($this->dataPath . "naive.yml", Config::YAML, []);
 			$this->loadNaiveConfig();
 
 			$this->logger->info("Loading server properties...");

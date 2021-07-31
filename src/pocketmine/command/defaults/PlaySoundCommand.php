@@ -47,7 +47,7 @@ class PlaySoundCommand extends VanillaCommand{
 			]
 		]);
 
-		$this->setPermission("altay.command.playsound");
+		$this->setPermission("naive.command.playsound");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){

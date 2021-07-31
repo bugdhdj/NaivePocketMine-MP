@@ -40,7 +40,7 @@ class PingCommand extends VanillaCommand{
 					new CommandParameter("player", AvailableCommandsPacket::ARG_TYPE_TARGET)
 				]
 			]);
-		$this->setPermission("altay.command.ping");
+		$this->setPermission("naive.command.ping");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){

@@ -35,14 +35,14 @@ use pocketmine\utils\TextFormat;
 class XpCommand extends VanillaCommand{
 
 	public function __construct(string $name){
-		parent::__construct($name, "%altay.command.xp.description", 'altay.command.xp.usage', [], [
+		parent::__construct($name, "%naive.command.xp.description", 'naive.command.xp.usage', [], [
 			[
 				new CommandParameter("amount", AvailableCommandsPacket::ARG_TYPE_INT, false),
 				new CommandParameter("player", AvailableCommandsPacket::ARG_TYPE_TARGET)
 			]
 		]);
 
-		$this->setPermission("altay.command.xp");
+		$this->setPermission("naive.command.xp");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){

@@ -57,7 +57,7 @@ class ClearCommand extends VanillaCommand{
 			}
 			go_to_next:
 		}
-		parent::__construct($name, "%altay.command.clear.description", "%altay.command.clear.usage", [], [
+		parent::__construct($name, "%naive.command.clear.description", "%naive.command.clear.usage", [], [
 			[// 3 parameter for Naive (normal 4)
 				new CommandParameter("player", AvailableCommandsPacket::ARG_TYPE_TARGET),
 				new CommandParameter("itemName", AvailableCommandsPacket::ARG_TYPE_STRING, true, new CommandEnum("clear_item_names", array_values($itemNames))),
@@ -65,12 +65,12 @@ class ClearCommand extends VanillaCommand{
 			]
 		]);
 
-		$this->setPermission("altay.command.clear.self;altay.command.clear.other");
+		$this->setPermission("naive.command.clear.self;naive.command.clear.other");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){
 		if(empty($args)){
-			if(!$sender->hasPermission("altay.command.clear.self")){
+			if(!$sender->hasPermission("naive.command.clear.self")){
 				$sender->sendMessage(new TranslationContainer(TextFormat::RED . "%commands.generic.permission"));
 				return true;
 			}
@@ -81,7 +81,7 @@ class ClearCommand extends VanillaCommand{
 				throw new InvalidCommandSyntaxException();
 			}
 		}else{
-			if(!$sender->hasPermission("altay.command.clear.other")){
+			if(!$sender->hasPermission("naive.command.clear.other")){
 				$sender->sendMessage(new TranslationContainer(TextFormat::RED . "%commands.generic.permission"));
 				return true;
 			}

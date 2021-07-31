@@ -42,7 +42,7 @@ class StopSoundCommand extends VanillaCommand{
 				]
 			]);
 
-		$this->setPermission("altay.command.stopsound");
+		$this->setPermission("naive.command.stopsound");
 	}
 
 	public function execute(CommandSender $sender, string $commandLabel, array $args){
