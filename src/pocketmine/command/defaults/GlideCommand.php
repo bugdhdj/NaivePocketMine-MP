@@ -15,6 +15,7 @@ namespace pocketmine\command\defaults;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
+use pocketmine\item\Elytra;
 use pocketmine\item\Fireworks;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
@@ -41,11 +42,11 @@ class GlideCommand extends VanillaCommand{
 
 		if($sender instanceof Player){
 			$name=$sender->getLowerCaseName();
-			if(!isset(Fireworks::$boost_players[$name])){
-				Fireworks::$boost_players[$name]=-1;
+			if(!isset(Elytra::$boost_players[$name])){
+				Elytra::$boost_players[$name]=-1;
 				return true;
 			}
-			Fireworks::$boost_players[$name]=Fireworks::$boost_players[$name]<0?0:-1;
+			Elytra::$boost_players[$name]=Elytra::$boost_players[$name]<0?0:-1;
 		}
 
 		return true;
