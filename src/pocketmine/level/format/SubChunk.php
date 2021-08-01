@@ -51,8 +51,6 @@ class SubChunk implements SubChunkInterface{
 	/** @var string */
 	protected $skyLight;
 
-	public const SECTION_SIZE=4096;
-
 	private static function assignData(string $data, int $length, string $value = "\x00") : string{
 		if(strlen($data) !== $length){
 			assert($data === "", "Invalid non-zero length given, expected $length, got " . strlen($data));
@@ -62,8 +60,7 @@ class SubChunk implements SubChunkInterface{
 	}
 
 	public function __construct(string $ids = "", string $data = "", string $skyLight = "", string $blockLight = ""){
-		$this->ids = self::assignData($ids, self::SECTION_SIZE);
-		$this->eids=self::assignData($ids, self::SECTION_SIZE);
+		$this->ids = self::assignData($ids, 4096);
 		$this->data = self::assignData($data, 2048);
 		$this->skyLight = self::assignData($skyLight, 2048, "\xff");
 		$this->blockLight = self::assignData($blockLight, 2048);
@@ -74,9 +71,9 @@ class SubChunk implements SubChunkInterface{
 		return (
 			substr_count($this->ids, "\x00") === 4096 and
 			(!$checkLight or (
-				substr_count($this->skyLight, "\xff") === 2048 and
-				$this->blockLight === self::ZERO_NIBBLE_ARRAY
-			))
+					substr_count($this->skyLight, "\xff") === 2048 and
+					$this->blockLight === self::ZERO_NIBBLE_ARRAY
+				))
 		);
 	}
 
