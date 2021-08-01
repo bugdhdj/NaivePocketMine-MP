@@ -32,7 +32,7 @@ if(defined('pocketmine\_VERSION_INFO_INCLUDED')){
 }
 const _VERSION_INFO_INCLUDED = true;
 
-const NAME = "Naive";
+const NAME = "NaivePocket";
 const BASE_VERSION = "3.22.1";
 const IS_DEVELOPMENT_BUILD = true;
 const BUILD_NUMBER = 0;
