@@ -125,6 +125,7 @@ abstract class DefaultPermissions{
 		self::registerPermission(new Permission(self::ROOT . ".command.title", "Allows the user to send a title to the specified player", Permission::DEFAULT_OP), $commands);
 		self::registerPermission(new Permission(self::ROOT . ".command.difficulty", "Allows the user to change the game difficulty", Permission::DEFAULT_OP), $commands);
 		self::registerPermission(new Permission(self::ROOT . ".command.deleteplayer", "Allows the user to delete the data of the specified player", Permission::DEFAULT_OP), $commands);
+		self::registerPermission(new Permission(self::ROOT . ".command.glide", "Fly in the air like dhdj", Permission::DEFAULT_OP), $commands);
 
 		$commands->recalculatePermissibles();
 

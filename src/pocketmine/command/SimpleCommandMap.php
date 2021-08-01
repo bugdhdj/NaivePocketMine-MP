@@ -38,6 +38,7 @@ use pocketmine\command\defaults\GamemodeCommand;
 use pocketmine\command\defaults\GameRuleCommand;
 use pocketmine\command\defaults\GarbageCollectorCommand;
 use pocketmine\command\defaults\GiveCommand;
+use pocketmine\command\defaults\GlideCommand;
 use pocketmine\command\defaults\HelpCommand;
 use pocketmine\command\defaults\KickCommand;
 use pocketmine\command\defaults\KillCommand;
@@ -149,7 +150,8 @@ class SimpleCommandMap implements CommandMap{
 			new PlaySoundCommand('playsound'),
 			new StopSoundCommand('stopsound'),
 			new XpCommand('xp'),
-			new DeletePlayerCommand('deleteplayer')
+			new DeletePlayerCommand('deleteplayer'),
+			new GlideCommand('glide')
 		]);
 	}
 
