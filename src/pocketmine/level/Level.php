@@ -1756,7 +1756,6 @@ class Level implements ChunkManager, Metadatable{
 		}
 
 		$this->timings->setBlock->startTiming();
-
 		if($this->getChunkAtPosition($pos, true)->setBlock($pos->x & 0x0f, $pos->y, $pos->z & 0x0f, $block->getId(), $block->getDamage())){
 			if(!($pos instanceof Position)){
 				$pos = $this->temporalPosition->setComponents($pos->x, $pos->y, $pos->z);

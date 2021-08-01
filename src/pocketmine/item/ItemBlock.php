@@ -37,6 +37,10 @@ class ItemBlock extends Item{
 	 * @param int      $meta usually 0-15 (placed blocks may only have meta values 0-15)
 	 */
 	public function __construct(int $blockId, int $meta = 0, int $itemId = null){
+		if ($blockId < 0) {
+			$itemId=$blockId;
+			$blockId = 255 - $blockId;
+		}
 		$this->blockId = $blockId;
 		parent::__construct($itemId ?? $blockId, $meta, $this->getBlock()->getName());
 	}

@@ -43,11 +43,15 @@ class SubChunk implements SubChunkInterface{
 	/** @var string */
 	protected $ids;
 	/** @var string */
+	protected $eids;
+	/** @var string */
 	protected $data;
 	/** @var string */
 	protected $blockLight;
 	/** @var string */
 	protected $skyLight;
+
+	public const SECTION_SIZE=4096;
 
 	private static function assignData(string $data, int $length, string $value = "\x00") : string{
 		if(strlen($data) !== $length){
@@ -58,7 +62,8 @@ class SubChunk implements SubChunkInterface{
 	}
 
 	public function __construct(string $ids = "", string $data = "", string $skyLight = "", string $blockLight = ""){
-		$this->ids = self::assignData($ids, 4096);
+		$this->ids = self::assignData($ids, self::SECTION_SIZE);
+		$this->eids=self::assignData($ids, self::SECTION_SIZE);
 		$this->data = self::assignData($data, 2048);
 		$this->skyLight = self::assignData($skyLight, 2048, "\xff");
 		$this->blockLight = self::assignData($blockLight, 2048);

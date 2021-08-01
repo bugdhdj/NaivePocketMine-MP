@@ -75,19 +75,26 @@ class BlockFactory{
 	public static $blastResistance;
 
 	/**
+	 * Support for additional blocks
+	 */
+	public const MAX_BLOCK_ID=600;
+	public const DATA_BITS=4;
+	public const DATA_SIZE=1 << self::DATA_BITS;
+
+	/**
 	 * Initializes the block factory. By default this is called only once on server start, however you may wish to use
 	 * this if you need to reset the block factory back to its original defaults for whatever reason.
 	 */
 	public static function init() : void{
-		self::$fullList = new \SplFixedArray(4096);
+		self::$fullList = new \SplFixedArray(self::MAX_BLOCK_ID * (1 << self::DATA_BITS));
 
-		self::$light = new \SplFixedArray(256);
-		self::$lightFilter = new \SplFixedArray(256);
-		self::$solid = new \SplFixedArray(256);
-		self::$hardness = new \SplFixedArray(256);
-		self::$transparent = new \SplFixedArray(256);
-		self::$diffusesSkyLight = new \SplFixedArray(256);
-		self::$blastResistance = new \SplFixedArray(256);
+		self::$light = new \SplFixedArray(self::MAX_BLOCK_ID);
+		self::$lightFilter = new \SplFixedArray(self::MAX_BLOCK_ID);
+		self::$solid = new \SplFixedArray(self::MAX_BLOCK_ID);
+		self::$hardness = new \SplFixedArray(self::MAX_BLOCK_ID);
+		self::$transparent = new \SplFixedArray(self::MAX_BLOCK_ID);
+		self::$diffusesSkyLight = new \SplFixedArray(self::MAX_BLOCK_ID);
+		self::$blastResistance = new \SplFixedArray(self::MAX_BLOCK_ID);
 
 		self::registerBlock(new Air());
 		self::registerBlock(new Stone());
@@ -140,6 +147,7 @@ class BlockFactory{
 		self::registerBlock(new MossyCobblestone());
 		self::registerBlock(new Obsidian());
 		self::registerBlock(new Torch());
+		self::registerBlock(new SoulFireTorch());
 		self::registerBlock(new Fire());
 		self::registerBlock(new MonsterSpawner());
 		self::registerBlock(new WoodenStairs(Block::OAK_STAIRS, 0, "Oak Stairs"));
@@ -340,8 +348,8 @@ class BlockFactory{
 
 		self::registerBlock(new Reserved6(Block::RESERVED6, 0, "reserved6"));
 
-		for($id = 0, $size = self::$fullList->getSize() >> 4; $id < $size; ++$id){
-			if(self::$fullList[$id << 4] === null){
+		for($id = 0, $size = self::$fullList->getSize() >> self::DATA_BITS; $id < $size; ++$id){
+			if(self::$fullList[$id << self::DATA_BITS] === null){
 				self::registerBlock(new UnknownBlock($id));
 			}
 		}
@@ -373,7 +381,7 @@ class BlockFactory{
 		for($meta = 0; $meta < 16; ++$meta){
 			$variant = clone $block;
 			$variant->setDamage($meta);
-			self::$fullList[($id << 4) | $meta] = $variant;
+			self::$fullList[($id << self::DATA_BITS) | $meta] = $variant;
 		}
 
 		self::$solid[$id] = $block->isSolid();
@@ -389,13 +397,17 @@ class BlockFactory{
 	 * Returns a new Block instance with the specified ID, meta and position.
 	 */
 	public static function get(int $id, int $meta = 0, Position $pos = null) : Block{
+		if ($id < 0) {
+			$id = 255 - $id;
+		}
+
 		if($meta < 0 or $meta > 0xf){
 			throw new \InvalidArgumentException("Block meta value $meta is out of bounds");
 		}
 
 		try{
 			if(self::$fullList !== null){
-				$block = clone self::$fullList[($id << 4) | $meta];
+				$block = clone self::$fullList[($id << self::DATA_BITS) | $meta];
 			}else{
 				$block = new UnknownBlock($id, $meta);
 			}
@@ -413,6 +425,23 @@ class BlockFactory{
 		return $block;
 	}
 
+	public static function exists(int $id, int $meta = 0):bool{
+		if ($id < 0) {
+			$id = 255 - $id;
+		}
+		if($meta < 0 or $meta > 0xf){
+			return false;
+		}
+		try{
+			if(self::$fullList !== null && isset(self::$fullList[($id << self::DATA_BITS) | $meta])){
+				return true;
+			}
+			return false;
+		}catch(\RuntimeException $e){
+			throw new \InvalidArgumentException("Block ID $id is out of bounds");
+		}
+	}
+
 	/**
 	 * @internal
 	 * @phpstan-return \SplFixedArray<Block>
@@ -425,7 +454,7 @@ class BlockFactory{
 	 * Returns whether a specified block ID is already registered in the block factory.
 	 */
 	public static function isRegistered(int $id) : bool{
-		$b = self::$fullList[$id << 4];
+		$b = self::$fullList[$id << self::DATA_BITS];
 		return $b !== null and !($b instanceof UnknownBlock);
 	}
 

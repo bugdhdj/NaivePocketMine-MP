@@ -96,7 +96,7 @@ class Block extends Position implements BlockIds, Metadatable{
 	 * Used for drops for blocks (some blocks such as doors have a different item ID).
 	 */
 	public function getItemId() : int{
-		return $this->itemId ?? $this->getId();
+		return $this->itemId ?? ($this->getId()>255?255-$this->getId():$this->getId());
 	}
 
 	/**

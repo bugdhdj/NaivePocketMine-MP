@@ -95,6 +95,7 @@ final class RuntimeBlockMapping{
 			if($id === null){
 				throw new \RuntimeException("No legacy ID matches " . $pair->getId());
 			}
+
 			$data = $pair->getMeta();
 			if($data > 15){
 				//we can't handle metadata with more than 4 bits
